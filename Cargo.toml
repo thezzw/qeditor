@@ -1,0 +1,14 @@
+## Here's my code: 
+[package]
+name = "qeditor"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+qmath = { path = "../qmath" }
+qgeometry = { path = "../qgeometry" }
+bevy = { version = "0.17" }
+bevy_egui = "0.38"
+
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld.exe"
