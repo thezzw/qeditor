@@ -30,10 +30,9 @@ pub fn handle_shape_interaction(
     mut egui_contexts: EguiContexts, // Add EguiContexts to check if mouse is over UI
 ) {
     // Check if egui wants pointer input (mouse is over UI)
-    let mouse_over_ui = if let Ok(ctx) = egui_contexts.ctx_mut() {
-        ctx.wants_pointer_input()
-    } else {
-        false
+    let mouse_over_ui = match egui_contexts.ctx_mut() {
+        Ok(ctx) => ctx.wants_pointer_input(),
+        Err(_) => false,
     };
 
     // If mouse is over UI, don't handle shape interaction
@@ -42,18 +41,22 @@ pub fn handle_shape_interaction(
     }
 
     // Update the selected shape type based on UI state
-    if let Some(shape_type) = ui_state.selected_shape {
-        selected_shape_type.shape_type = Some(shape_type);
+    if ui_state.selected_shape.is_none() || ui_state.selected_shape != selected_shape_type.shape_type {
+        // If no shape is selected in UI, reset drawing state
+        shape_drawing_state.is_drawing = false;
+        shape_drawing_state.start_position = None;
+        if let Some(entity) = shape_drawing_state.current_shape {
+            commands.entity(entity).despawn();
+            shape_drawing_state.current_shape = None;
+        }
+        selected_shape_type.shape_type = ui_state.selected_shape;
+        return;
+    } else {
+        selected_shape_type.shape_type = ui_state.selected_shape;
     }
 
-    if selected_shape_type.shape_type.is_none() { return; }
-
-    // Get the primary window
-    let window = if let Ok(window) = windows.single() {
-        window
-    } else {
-        return;
-    };
+    // Get the primary window reference
+    let window = if let Ok(window) = windows.single() { window } else { return };
 
     // Get camera transform for proper coordinate conversion
     let (camera, camera_transform) = if let Ok((camera, camera_transform)) = camera_q.single() {
@@ -63,28 +66,27 @@ pub fn handle_shape_interaction(
     };
 
     // Convert screen coordinates to world coordinates properly using the camera
-    let cursor_pos = if let Some(cursor_pos) = window.cursor_position() {
-        cursor_pos
-    } else {
-        return;
-    };
+    let cursor_pos = if let Some(cursor_pos) = window.cursor_position() { cursor_pos } else { return };
 
     let world_pos = if let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, cursor_pos) {
         world_pos
     } else {
         // Fallback calculation if camera conversion fails
-        Vec2::new(
-            cursor_pos.x - window.width() / 2.0,
-            window.height() / 2.0 - cursor_pos.y,
-        )
+        Vec2::new(cursor_pos.x - window.width() / 2.0, window.height() / 2.0 - cursor_pos.y)
     };
 
     // Convert world coordinates to QVec2
     let qworld_pos = QVec2::new(Q64::from_num(world_pos.x), Q64::from_num(world_pos.y));
     let qworld_point = QPoint::new(qworld_pos);
 
+    // Determine the selected shape type
+    let shape_type = match selected_shape_type.shape_type {
+        Some(t) => t,
+        None => return,
+    };
+
     // Handle ongoing shape drawing
-    match selected_shape_type.shape_type.unwrap() {
+    match shape_type {
         QShapeType::QPoint | QShapeType::QLine | QShapeType::QBbox | QShapeType::QCircle => {
             // Finalize the current shape
             if let Some(entity) = shape_drawing_state.current_shape {
@@ -94,7 +96,7 @@ pub fn handle_shape_interaction(
                     if start_point == qworld_point { return; }
                     match selected_shape_type.shape_type.unwrap() {
                         QShapeType::QPoint => {
-                            // Points don't need further modification
+                            commands.entity(entity).insert(PointShape { point: qworld_point });
                         }
                         QShapeType::QLine => {
                             // For line shapes, we need to get the current line to update it
@@ -104,7 +106,15 @@ pub fn handle_shape_interaction(
                         }
                         QShapeType::QBbox => {
                             // Update the bounding box with the second corner
-                            if !start_point.pos().partial_cmp(&qworld_pos).is_some_and(|ordering| ordering == Ordering::Less) { return; }
+                            // Ensure a proper bounding box is being created
+                            match start_point.pos().partial_cmp(&qworld_pos) {
+                                Some(Ordering::Less) => {
+                                    if start_point.pos().x == qworld_pos.x || start_point.pos().y == qworld_pos.y {
+                                        return;
+                                    }
+                                },
+                                _ => { return; },
+                            }
                             let new_bbox = QBbox::new_from_parts(start_point.pos(), qworld_pos);
                             commands.entity(entity).insert(BboxShape { bbox: new_bbox });
                         }
@@ -118,6 +128,26 @@ pub fn handle_shape_interaction(
                         }
                         _ => {}
                     }
+                }
+            } else {
+                if selected_shape_type.shape_type == Some(QShapeType::QPoint) {
+                    // For point shapes, create and finalize immediately
+                    let entity = commands.spawn((
+                        Shape {
+                            shape_type: QShapeType::QPoint,
+                            selected: false,
+                        },
+                        PointShape {
+                            point: qworld_point,
+                        },
+                        Transform::default(),
+                        Visibility::default(),
+                    )).id();
+                    shape_drawing_state.current_shape = Some(entity);
+                    // Start drawing a new point
+                    shape_drawing_state.is_drawing = true;
+                    shape_drawing_state.start_position = Some(qworld_pos);
+                    return;
                 }
             }
         }
@@ -141,10 +171,11 @@ pub fn handle_shape_interaction(
 
     // Handle right mouse button for ending polygon drawing
     if mouse_button_input.just_pressed(MouseButton::Right) {
-        if shape_drawing_state.is_drawing && selected_shape_type.shape_type.unwrap() == QShapeType::QPolygon {
+        if shape_drawing_state.is_drawing && shape_type == QShapeType::QPolygon {
             // End polygon drawing
             shape_drawing_state.is_drawing = false;
             shape_drawing_state.start_position = None;
+            shape_drawing_state.current_shape = None;
             return;
         }
     }
@@ -153,13 +184,14 @@ pub fn handle_shape_interaction(
     if mouse_button_input.just_pressed(MouseButton::Left) {
         if shape_drawing_state.is_drawing {
             // Handle ongoing shape drawing
-            match selected_shape_type.shape_type.unwrap() {
+            match shape_type {
                 QShapeType::QPoint | QShapeType::QLine | QShapeType::QBbox | QShapeType::QCircle => {
                     // Finalize the current shape
                     if let Some(_entity) = shape_drawing_state.current_shape {
                         // Finalize shape properties based on second click
                         shape_drawing_state.is_drawing = false;
                         shape_drawing_state.start_position = None;
+                        shape_drawing_state.current_shape = None;
                     }
                 }
                 QShapeType::QPolygon => {
@@ -187,19 +219,8 @@ pub fn handle_shape_interaction(
         // Create the appropriate shape based on the selected type
         match selected_shape_type.shape_type.unwrap() {
             QShapeType::QPoint => {
-                // Create a point shape
-                let entity = commands.spawn((
-                    Shape {
-                        shape_type: QShapeType::QPoint,
-                        selected: false,
-                    },
-                    PointShape {
-                        point: qworld_point,
-                    },
-                    Transform::default(),
-                    Visibility::default(),
-                )).id();
-                shape_drawing_state.current_shape = Some(entity);
+                // Should not reach here since point is finalized immediately
+                assert!(false, "Point shape should be finalized immediately on click.");
             }
             QShapeType::QLine => {
                 // Create a line shape with both points at the same location initially
@@ -277,6 +298,9 @@ pub fn draw_shapes(
     mut gizmos: Gizmos,
     shapes: Query<(&Shape, Option<&PointShape>, Option<&LineShape>, Option<&BboxShape>, Option<&CircleShape>, Option<&PolygonShape>)>,
 ) {
+    fn qvec_to_vec2(v: QVec2) -> Vec2 {
+        Vec2::new(v.x.to_num::<f32>(), v.y.to_num::<f32>())
+    }
     for (shape, point_opt, line_opt, bbox_opt, circle_opt, polygon_opt) in shapes.iter() {
         // Set color based on selection state
         let color = if shape.selected {
@@ -288,7 +312,7 @@ pub fn draw_shapes(
         // Draw the appropriate shape based on its type
         if let Some(point) = point_opt {
             let pos = point.point.pos();
-            gizmos.circle_2d(Vec2::new(pos.x.to_num::<f32>(), pos.y.to_num::<f32>()), 0.2, color);
+            gizmos.circle_2d(qvec_to_vec2(pos), 0.2, color);
         }
 
         if let Some(line) = line_opt {
@@ -296,8 +320,8 @@ pub fn draw_shapes(
             let start = line.line.start().pos();
             let end = line.line.end().pos();
             gizmos.line_2d(
-                Vec2::new(start.x.to_num::<f32>(), start.y.to_num::<f32>()),
-                Vec2::new(end.x.to_num::<f32>(), end.y.to_num::<f32>()),
+                qvec_to_vec2(start),
+                qvec_to_vec2(end),
                 color,
             );
         }
@@ -320,7 +344,7 @@ pub fn draw_shapes(
             let center = circle.circle.center().pos();
             let radius = circle.circle.radius().to_num::<f32>();
             gizmos.circle_2d(
-                Vec2::new(center.x.to_num::<f32>(), center.y.to_num::<f32>()),
+                qvec_to_vec2(center),
                 radius,
                 color,
             );
@@ -332,19 +356,15 @@ pub fn draw_shapes(
             if points.len() > 1 {
                 // Draw edges between consecutive points
                 for i in 0..points.len() {
-                    let current = points[i].pos();
-                    let next = points[(i + 1) % points.len()].pos();
+                        let current = points[i].pos();
+                        let next = points[(i + 1) % points.len()].pos();
                     
-                    gizmos.line_2d(
-                        Vec2::new(current.x.to_num::<f32>(), current.y.to_num::<f32>()),
-                        Vec2::new(next.x.to_num::<f32>(), next.y.to_num::<f32>()),
-                        color,
-                    );
+                    gizmos.line_2d(qvec_to_vec2(current), qvec_to_vec2(next), color);
                 }
             } else if points.len() == 1 {
                 // Draw a single point if there's only one point
                 let pos = points[0].pos();
-                gizmos.circle_2d(Vec2::new(pos.x.to_num::<f32>(), pos.y.to_num::<f32>()), 0.2, color);
+                gizmos.circle_2d(qvec_to_vec2(pos), 0.2, color);
             }
         }
     }

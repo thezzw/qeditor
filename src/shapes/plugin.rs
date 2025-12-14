@@ -1,28 +1,20 @@
 //! Shapes plugin implementation
 //!
-//! This module defines the Bevy plugin for managing geometric shapes
-//! using the qgeometry library data structures.
+//! Registers resources and systems for creating, editing, and rendering shapes.
 
 use bevy::prelude::*;
 
-use crate::shapes::{
-    components::*,
-    resources::*,
-    systems::*,
-};
+use crate::shapes::{resources::*, systems::*};
 
-/// Plugin for handling shapes functionality
+/// `ShapesPlugin` registers shape state resources and runtime systems.
 pub struct ShapesPlugin;
 
 impl Plugin for ShapesPlugin {
     fn build(&self, app: &mut App) {
-        // Initialize resources
+        // Initialize the resources with Default implementations.
         app.init_resource::<SelectedShapeType>()
             .init_resource::<ShapeDrawingState>()
-            // Add systems for shape management
-            .add_systems(Update, (
-                handle_shape_interaction,
-                draw_shapes,
-            ));
+            // Register interaction and rendering systems.
+            .add_systems(Update, (handle_shape_interaction, draw_shapes));
     }
 }

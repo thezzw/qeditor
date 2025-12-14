@@ -1,22 +1,20 @@
 //! UI plugin implementation
 //!
-//! This module defines the Bevy plugin for the egui-based user interface,
-//! including the graphics editing panel.
+//! Registers the egui UI state resource and the systems that render the editor UI.
 
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
 
-use crate::ui::systems::{ui_system, toggle_ui_visibility};
+use crate::ui::systems::{ui_system, toggle_ui_visibility, UiState};
 
-/// Plugin for handling UI functionality
+/// `UiPlugin` handles UI state and registers UI systems.
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        // Initialize UI state resource
-        app.init_resource::<crate::ui::systems::UiState>();
-        
-        // Add systems for UI rendering
-        app.add_systems(EguiPrimaryContextPass, (ui_system, toggle_ui_visibility));
+        // Initialize the UI state (Default) resource consistently.
+        app.init_resource::<UiState>()
+            // Register UI systems that require egui context
+            .add_systems(EguiPrimaryContextPass, (ui_system, toggle_ui_visibility));
     }
 }
