@@ -4,11 +4,20 @@
 //! using the qgeometry library data structures.
 
 use bevy::prelude::*;
-use qgeometry::shape::{QPoint, QLine, QBbox, QCircle, QPolygon, QShapeType};
+use qgeometry::shape::{QBbox, QCircle, QLine, QPoint, QPolygon, QShapeType};
+
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum ShapeLayer {
+    #[default]
+    MainScene,
+    AuxiliaryLine,
+}
 
 /// Component representing a shape entity
 #[derive(Component, Debug, Clone)]
 pub struct Shape {
+    /// The layer of the shape
+    pub layer: ShapeLayer,
     /// The type of the shape
     pub shape_type: QShapeType,
     /// Whether the shape is selected

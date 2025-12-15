@@ -40,9 +40,14 @@ fn camera_pan(
     mouse_button_input: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window, With<PrimaryWindow>>,
 ) {
-    let window = match windows.single() { Ok(w) => w, Err(_) => return };
+    let window = match windows.single() {
+        Ok(w) => w,
+        Err(_) => return,
+    };
 
-    let Ok((mut camera_transform, mut camera_movement)) = camera_query.single_mut() else { return };
+    let Ok((mut camera_transform, mut camera_movement)) = camera_query.single_mut() else {
+        return;
+    };
 
     if mouse_button_input.just_pressed(MouseButton::Middle) {
         camera_movement.dragging = true;
@@ -69,15 +74,28 @@ fn camera_zoom(
     mut mouse_wheel_events: MessageReader<MouseWheel>,
     windows: Query<&Window, With<PrimaryWindow>>,
 ) {
-    let _window = match windows.single() { Ok(w) => w, Err(_) => return };
+    let _window = match windows.single() {
+        Ok(w) => w,
+        Err(_) => return,
+    };
 
-    let Ok(mut camera_transform) = camera_query.single_mut() else { return };
+    let Ok(mut camera_transform) = camera_query.single_mut() else {
+        return;
+    };
 
     for event in mouse_wheel_events.read() {
-        let zoom_factor = if event.y > 0.0 { 0.9 } else if event.y < 0.0 { 1.1 } else { continue };
+        let zoom_factor = if event.y > 0.0 {
+            0.9
+        } else if event.y < 0.0 {
+            1.1
+        } else {
+            continue;
+        };
         camera_transform.scale *= zoom_factor;
     }
 
     // Limit how far the user can zoom in or out.
-    camera_transform.scale = camera_transform.scale.clamp(Vec3::splat(0.01), Vec3::splat(0.1));
+    camera_transform.scale = camera_transform
+        .scale
+        .clamp(Vec3::splat(0.01), Vec3::splat(0.1));
 }
