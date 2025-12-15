@@ -17,6 +17,9 @@ use ui::UiPlugin;
 mod shapes;
 use shapes::ShapesPlugin;
 
+mod collision_detection;
+use collision_detection::CollisionDetectionPlugin;
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -32,6 +35,7 @@ fn main() {
         .add_plugins(CameraControlPlugin)
         .add_plugins(UiPlugin)
         .add_plugins(ShapesPlugin)
+        .add_plugins(CollisionDetectionPlugin)
         .add_systems(Startup, setup)
         .run();
 }
