@@ -16,6 +16,6 @@ impl Plugin for CoordinatePlugin {
         // Initialize coordinate settings using `init_resource` for consistency.
         app.init_resource::<CoordinateSettings>()
             // Register the drawing system at the Update stage.
-            .add_systems(Update, draw_coordinate_system);
+            .add_systems(PreUpdate, draw_coordinate_system);
     }
 }

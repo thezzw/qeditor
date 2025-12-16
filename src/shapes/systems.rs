@@ -45,7 +45,6 @@ pub fn handle_shape_interaction(
         || ui_state.selected_shape != selected_shape_type.shape_type
     {
         // If no shape is selected in UI, reset drawing state
-        shape_drawing_state.is_drawing = false;
         shape_drawing_state.start_position = None;
         if let Some(entity) = shape_drawing_state.current_shape {
             commands.entity(entity).despawn();
@@ -158,24 +157,20 @@ pub fn handle_shape_interaction(
                 }
             } else {
                 if selected_shape_type.shape_type == Some(QShapeType::QPoint) {
-                    // For point shapes, create and finalize immediately
-                    let entity = commands
-                        .spawn((
-                            Shape {
-                                layer: ShapeLayer::MainScene,
-                                shape_type: QShapeType::QPoint,
-                                selected: false,
-                            },
-                            PointShape {
-                                point: qworld_point,
-                            },
-                            Transform::default(),
-                            Visibility::default(),
-                        ))
-                        .id();
-                    shape_drawing_state.current_shape = Some(entity);
                     // Start drawing a new point
-                    shape_drawing_state.is_drawing = true;
+                    let entity = commands.spawn((
+                        Shape {
+                            layer: ShapeLayer::MainScene,
+                            shape_type: QShapeType::QPoint,
+                            selected: false,
+                        },
+                        PointShape {
+                            point: qworld_point,
+                        },
+                        Transform::default(),
+                        Visibility::default(),
+                    )).id();
+                    shape_drawing_state.current_shape = Some(entity);
                     shape_drawing_state.start_position = Some(qworld_pos);
                     return;
                 }
@@ -201,9 +196,8 @@ pub fn handle_shape_interaction(
 
     // Handle right mouse button for ending polygon drawing
     if mouse_button_input.just_pressed(MouseButton::Right) {
-        if shape_drawing_state.is_drawing && shape_type == QShapeType::QPolygon {
+        if shape_drawing_state.current_shape.is_some() && shape_type == QShapeType::QPolygon {
             // End polygon drawing
-            shape_drawing_state.is_drawing = false;
             shape_drawing_state.start_position = None;
             shape_drawing_state.current_shape = None;
             return;
@@ -212,7 +206,7 @@ pub fn handle_shape_interaction(
 
     // Handle left mouse button for shape creation
     if mouse_button_input.just_pressed(MouseButton::Left) {
-        if shape_drawing_state.is_drawing {
+        if shape_drawing_state.current_shape.is_some() {
             // Handle ongoing shape drawing
             match shape_type {
                 QShapeType::QPoint
@@ -222,7 +216,6 @@ pub fn handle_shape_interaction(
                     // Finalize the current shape
                     if let Some(_entity) = shape_drawing_state.current_shape {
                         // Finalize shape properties based on second click
-                        shape_drawing_state.is_drawing = false;
                         shape_drawing_state.start_position = None;
                         shape_drawing_state.current_shape = None;
                     }
@@ -246,7 +239,6 @@ pub fn handle_shape_interaction(
         }
 
         // Start drawing a new shape
-        shape_drawing_state.is_drawing = true;
         shape_drawing_state.start_position = Some(qworld_pos);
 
         // Create the appropriate shape based on the selected type

@@ -16,8 +16,6 @@ pub struct SelectedShapeType {
 /// Resource to track the state of shape drawing
 #[derive(Resource, Debug, Default)]
 pub struct ShapeDrawingState {
-    /// Whether we're currently drawing a shape
-    pub is_drawing: bool,
     /// The starting position of the shape being drawn
     pub start_position: Option<QVec2>,
     /// The entity of the current shape being drawn
