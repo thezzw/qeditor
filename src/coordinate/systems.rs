@@ -7,6 +7,54 @@ use bevy::prelude::*;
 
 use crate::coordinate::resources::CoordinateSettings;
 
+fn draw_grids(gizmos: &mut Gizmos, spacing: f32, color: Color, camera_transform: &GlobalTransform) {
+    // Get the camera viewport to determine the visible area
+    let camera_position = camera_transform.translation();
+    let camera_scale = camera_transform.compute_transform().scale;
+
+    // Calculate the visible area based on camera position and scale
+    // This creates an "infinite" feel by dynamically generating lines in the visible area
+    let visible_width = 2000.0 * camera_scale.x;
+    let visible_height = 2000.0 * camera_scale.y;
+
+    let left = camera_position.x - visible_width / 2.0;
+    let right = camera_position.x + visible_width / 2.0;
+    let bottom = camera_position.y - visible_height / 2.0;
+    let top = camera_position.y + visible_height / 2.0;
+
+    // Calculate grid lines within visible area
+    let start_x = (left / spacing).floor() as i32;
+    let end_x = (right / spacing).ceil() as i32;
+    let start_y = (bottom / spacing).floor() as i32;
+    let end_y = (top / spacing).ceil() as i32;
+
+    // Draw vertical grid lines
+    for x in start_x..=end_x {
+        let x_pos = x as f32 * spacing;
+        if x_pos != 0.0 {
+            // Skip the axis line
+            gizmos.line_2d(
+                Vec2::new(x_pos, bottom),
+                Vec2::new(x_pos, top),
+                color,
+            );
+        }
+    }
+
+    // Draw horizontal grid lines
+    for y in start_y..=end_y {
+        let y_pos = y as f32 * spacing;
+        if y_pos != 0.0 {
+            // Skip the axis line
+            gizmos.line_2d(
+                Vec2::new(left, y_pos),
+                Vec2::new(right, y_pos),
+                color,
+            );
+        }
+    }
+}
+
 /// System to draw the coordinate axes and grid using gizmos
 pub fn draw_coordinate_system(
     coordinate_settings: Res<CoordinateSettings>,
@@ -46,38 +94,6 @@ pub fn draw_coordinate_system(
         coordinate_settings.y_axis_color,
     );
 
-    // Draw grid lines
-    let grid_spacing = coordinate_settings.grid_spacing;
-
-    // Calculate grid lines within visible area
-    let start_x = (left / grid_spacing).floor() as i32;
-    let end_x = (right / grid_spacing).ceil() as i32;
-    let start_y = (bottom / grid_spacing).floor() as i32;
-    let end_y = (top / grid_spacing).ceil() as i32;
-
-    // Draw vertical grid lines
-    for x in start_x..=end_x {
-        let x_pos = x as f32 * grid_spacing;
-        if x_pos != 0.0 {
-            // Skip the axis line
-            gizmos.line_2d(
-                Vec2::new(x_pos, bottom),
-                Vec2::new(x_pos, top),
-                coordinate_settings.grid_color,
-            );
-        }
-    }
-
-    // Draw horizontal grid lines
-    for y in start_y..=end_y {
-        let y_pos = y as f32 * grid_spacing;
-        if y_pos != 0.0 {
-            // Skip the axis line
-            gizmos.line_2d(
-                Vec2::new(left, y_pos),
-                Vec2::new(right, y_pos),
-                coordinate_settings.grid_color,
-            );
-        }
-    }
+    draw_grids(&mut gizmos, coordinate_settings.grid_spacing, coordinate_settings.grid_color, camera_transform);
+    draw_grids(&mut gizmos, coordinate_settings.chunk_spacing, coordinate_settings.chunk_color, camera_transform);
 }
