@@ -28,15 +28,18 @@ pub struct UiState {
     pub selected_layer: ShapeLayer,
     /// File path for saving/loading shapes
     pub file_path: String,
+    /// Whether to enable snap to grid
+    pub enable_snap: bool,
 }
 
 impl Default for UiState {
     fn default() -> Self {
         Self {
-            panel_visible: true,
+            panel_visible: false,
             selected_shape: None,
             selected_layer: ShapeLayer::MainScene,
             file_path: "assets/save/default.json".to_string(),
+            enable_snap: true,
         }
     }
 }
@@ -319,6 +322,11 @@ fn draw_shape_editor(
             });
         }
     }
+    
+    // Snap to grid checkbox
+    ui.separator();
+    ui.label("Grid Settings:");
+    ui.checkbox(&mut ui_state.enable_snap, "Snap to Grid");
 }
 
 /// System to toggle UI visibility with a keyboard shortcut (e.g., Tab key)

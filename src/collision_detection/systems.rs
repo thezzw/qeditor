@@ -355,7 +355,7 @@ pub fn detect_collisions(
                 }
                 
                 // Spawn separation vector visualization if available
-                if let Some(vector) = separation_vector {
+                if let Some(vector) = separation_vector && vector != QVec2::ZERO {
                     let start = get_shape_center(point_b, line_b, bbox_b, circle_b, polygon_b);
                     let line = QLine::new_from_parts(start.pos(), start.pos().saturating_add(vector));
                     commands.spawn((
@@ -451,7 +451,7 @@ fn draw_arrowhead(gizmos: &mut Gizmos, start: Vec2, end: Vec2, color: Color) {
     }
     
     let direction = (end - start).normalize();
-    let arrow_size = 0.5; // Size of the arrowhead
+    let arrow_size = 0.2; // Size of the arrowhead
     
     // Calculate perpendicular vector for arrowhead
     let perp = Vec2::new(-direction.y, direction.x) * arrow_size * 0.5;

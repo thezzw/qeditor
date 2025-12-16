@@ -90,7 +90,10 @@ pub fn handle_shape_interaction(
     };
 
     // Convert world coordinates to QVec2
-    let qworld_pos = QVec2::new(Q64::from_num(world_pos.x), Q64::from_num(world_pos.y));
+    let mut qworld_pos = QVec2::new(Q64::from_num(world_pos.x), Q64::from_num(world_pos.y));
+    if ui_state.enable_snap {
+        qworld_pos = qworld_pos.round();
+    }
     let qworld_point = QPoint::new(qworld_pos);
 
     // Determine the selected shape type
