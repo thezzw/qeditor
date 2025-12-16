@@ -4,6 +4,8 @@
 
 use bevy::prelude::*;
 use qgeometry::shape::{QLine, QPoint, QShapeCommon};
+use qgeometry::algorithm::get_minkowski_difference;
+use qmath::vec2::QVec2;
 
 use crate::shapes::{
     components::{Shape, PointShape, LineShape, BboxShape, CircleShape, PolygonShape, ShapeLayer},
@@ -16,6 +18,10 @@ pub struct CollisionVisualization;
 /// Component to mark entities that represent separation vector visualization
 #[derive(Component)]
 pub struct SeparationVectorVisualization;
+
+/// Component to mark entities that represent Minkowski difference visualization
+#[derive(Component)]
+pub struct MinkowskiDifferenceVisualization;
 
 /// System to detect collisions between shapes
 pub fn detect_collisions(
@@ -457,4 +463,89 @@ fn draw_arrowhead(gizmos: &mut Gizmos, start: Vec2, end: Vec2, color: Color) {
     // Draw arrowhead lines
     gizmos.line_2d(end, arrow_point1, color);
     gizmos.line_2d(end, arrow_point2, color);
+}
+
+/// System to compute and visualize Minkowski difference of two selected polygons
+pub fn compute_minkowski_difference(
+    // Query all shapes with their components
+    shapes: Query<(
+        Entity,
+        &Shape,
+        Option<&PointShape>,
+        Option<&LineShape>,
+        Option<&BboxShape>,
+        Option<&CircleShape>,
+        Option<&PolygonShape>,
+    )>,
+    // Query existing Minkowski difference visualizations to clean them up
+    mut minkowski_query: Query<Entity, With<MinkowskiDifferenceVisualization>>,
+    // Add commands to spawn/despawn entities for visualization
+    mut commands: Commands,
+) {
+    // Clean up existing Minkowski difference visualizations
+    for entity in minkowski_query.iter_mut() {
+        commands.entity(entity).despawn();
+    }
+
+    // Find exactly two selected polygons
+    let mut selected_polygons: Vec<(Entity, &PolygonShape)> = Vec::new();
+    
+    for (entity, shape, _, _, _, _, polygon_opt) in shapes.iter() {
+        if let Some(polygon) = polygon_opt {
+            if shape.selected {
+                selected_polygons.push((entity, polygon));
+            }
+        }
+    }
+    
+    // Only proceed if exactly two polygons are selected
+    if selected_polygons.len() != 2 {
+        return;
+    }
+    
+    let (_, polygon_a) = selected_polygons[0];
+    let (_, polygon_b) = selected_polygons[1];
+    
+    // Compute Minkowski difference
+    let minkowski_diff = get_minkowski_difference(&polygon_a.polygon, &polygon_b.polygon);
+    
+    // Visualize the Minkowski difference as a polygon
+    commands.spawn((
+        Shape {
+            layer: ShapeLayer::AuxiliaryLine,
+            shape_type: minkowski_diff.get_shape_type(),
+            selected: false,
+        },
+        PolygonShape { polygon: minkowski_diff },
+        MinkowskiDifferenceVisualization,
+        Transform::default(),
+        Visibility::default(),
+    ));
+}
+
+pub fn visualize_minkowski_difference(
+    mut gizmos: Gizmos,
+    // Query for Minkowski difference visualizations with specific coloring
+    minkowski_shapes: Query<&PolygonShape, With<MinkowskiDifferenceVisualization>>,
+) {
+    fn qvec_to_vec2(v: QVec2) -> Vec2 {
+        Vec2::new(v.x.to_num::<f32>(), v.y.to_num::<f32>())
+    }
+    // Draw Minkowski difference visualizations with a distinct color
+    for polygon_shape in minkowski_shapes.iter() {
+        let points = polygon_shape.polygon.points();
+        if points.len() > 1 {
+            // Draw edges between consecutive points with a distinct color (orange)
+            for i in 0..points.len() {
+                let current = points[i].pos();
+                let next = points[(i + 1) % points.len()].pos();
+                
+                gizmos.line_2d(qvec_to_vec2(current), qvec_to_vec2(next), Color::srgba(1.0, 0.5, 0.0, 1.0));
+            }
+        } else if points.len() == 1 {
+            // Draw a single point if there's only one point
+            let pos = points[0].pos();
+            gizmos.circle_2d(qvec_to_vec2(pos), 0.2, Color::srgba(1.0, 0.5, 0.0, 1.0));
+        }
+    }
 }

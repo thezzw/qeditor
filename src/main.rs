@@ -20,6 +20,9 @@ use shapes::ShapesPlugin;
 mod collision_detection;
 use collision_detection::CollisionDetectionPlugin;
 
+mod save_load;
+use save_load::SaveLoadPlugin;
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -36,6 +39,7 @@ fn main() {
         .add_plugins(UiPlugin)
         .add_plugins(ShapesPlugin)
         .add_plugins(CollisionDetectionPlugin)
+        .add_plugins(SaveLoadPlugin)
         .add_systems(Startup, setup)
         .run();
 }

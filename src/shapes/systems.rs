@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
-use qgeometry::shape::{QBbox, QCircle, QLine, QPoint, QPolygon, QShapeType};
+use qgeometry::shape::{QBbox, QCircle, QLine, QPoint, QPolygon, QShapeCommon, QShapeType};
 use qmath::prelude::*;
 use qmath::vec2::QVec2;
 
@@ -349,9 +349,9 @@ pub fn draw_shapes(
     for (shape, point_opt, line_opt, bbox_opt, circle_opt, polygon_opt) in shapes.iter() {
         // Set color based on selection state
         let color = if shape.selected {
-            Color::srgba(0.0, 0.0, 1.0, 1.0) // Green
+            Color::srgba(0.0, 0.0, 1.0, 1.0) // Blue for selected
         } else {
-            Color::srgba(0.0, 0.0, 0.0, 1.0) // Black
+            Color::srgba(0.0, 0.0, 0.0, 1.0) // Black for unselected
         };
 
         // Draw the appropriate shape based on its type
@@ -382,9 +382,19 @@ pub fn draw_shapes(
         }
 
         if let Some(circle) = circle_opt {
-            let center = circle.circle.center().pos();
-            let radius = circle.circle.radius().to_num::<f32>();
-            gizmos.circle_2d(qvec_to_vec2(center), radius, color);
+            // let center = circle.circle.center().pos();
+            // let radius = circle.circle.radius().to_num::<f32>();
+            // gizmos.circle_2d(qvec_to_vec2(center), radius, color);
+            let points = circle.circle.points();
+            if points.len() > 1 {
+                // Draw edges between consecutive points
+                for i in 0..points.len() {
+                    let current = points[i].pos();
+                    let next = points[(i + 1) % points.len()].pos();
+
+                    gizmos.line_2d(qvec_to_vec2(current), qvec_to_vec2(next), color);
+                }
+            }
         }
 
         // Draw polygon edges

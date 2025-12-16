@@ -14,25 +14,38 @@ use qgeometry::shape::QShapeType;
 use crate::shapes::components::{
     BboxShape, CircleShape, LineShape, PointShape, PolygonShape, Shape, ShapeLayer,
 };
+// Import save/load events
+use crate::save_load::systems::{SaveSelectedShapesEvent, LoadShapesFromFileEvent};
 
 /// Resource to track UI visibility state
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct UiState {
     /// Whether the graphics editor panel is visible
     pub panel_visible: bool,
     /// Currently selected shape type for drawing
     pub selected_shape: Option<QShapeType>,
-    /// Currently selected shape entity in the list
-    pub selected_entity: Option<Entity>,
     /// Currently selected shape layer
     pub selected_layer: ShapeLayer,
+    /// File path for saving/loading shapes
+    pub file_path: String,
+}
+
+impl Default for UiState {
+    fn default() -> Self {
+        Self {
+            panel_visible: true,
+            selected_shape: None,
+            selected_layer: ShapeLayer::MainScene,
+            file_path: "assets/save/default.json".to_string(),
+        }
+    }
 }
 
 /// System to render the egui UI
 pub fn draw_editor_ui(
     mut contexts: EguiContexts,
     commands: Commands,
-    ui_state: ResMut<UiState>,
+    mut ui_state: ResMut<UiState>,
     // Query all shapes to display in the list
     shapes_query: Query<(
         Entity,
@@ -54,7 +67,7 @@ pub fn draw_editor_ui(
             .default_size(egui::Vec2::new(300.0, 400.0))
             .show(ctx, |ui| {
                 ui.heading("Graphics Editor");
-                draw_shape_editor(ui, commands, ui_state, shapes_query);
+                draw_shape_editor(ui, commands, &mut ui_state, shapes_query);
             });
     }
 }
@@ -62,7 +75,7 @@ pub fn draw_editor_ui(
 fn draw_shape_editor(
     ui: &mut Ui,
     mut commands: Commands,
-    mut ui_state: ResMut<UiState>,
+    ui_state: &mut UiState,
     // Query selected shape to edit
     shapes_query: Query<(
         Entity,
@@ -255,30 +268,17 @@ fn draw_shape_editor(
 
                 // Create a selectable label for the shape
                 let response =
-                    ui.selectable_label(ui_state.selected_entity == Some(entity), shape_label);
+                    ui.selectable_label(shape.selected, shape_label);
 
                 // Handle click on the shape in the list
                 if response.clicked() {
-                    // Update the selected entity in UI state
-                    ui_state.selected_entity = Some(entity);
-
-                    // Deselect all shapes first
-                    for (other_entity, other_shape, _, _, _, _, _) in shapes_query.iter() {
-                        if let Ok(mut entity_commands) = commands.get_entity(other_entity) {
-                            entity_commands.insert(Shape {
-                                layer: other_shape.layer,
-                                shape_type: other_shape.shape_type,
-                                selected: false,
-                            });
-                        }
-                    }
-
-                    // Select the clicked shape
+                    // Toggle selection state of the clicked shape
+                    let new_selected_state = !shape.selected;
                     if let Ok(mut entity_commands) = commands.get_entity(entity) {
                         entity_commands.insert(Shape {
                             layer: shape.layer,
                             shape_type: shape.shape_type,
-                            selected: true,
+                            selected: new_selected_state,  // Toggle the selection state
                         });
                     }
                 }
@@ -294,13 +294,31 @@ fn draw_shape_editor(
                 ui.label("No shapes in the selected layer");
             }
         });
-
-    // Additional controls could be added here
+    
+    // Add save/load functionality
     ui.separator();
-    ui.label("Instructions:");
-    ui.label("1. Select a shape type");
-    ui.label("2. Click on the canvas to draw");
-    ui.label("3. Click on shapes in the list to select them");
+    ui.label("Save/Load Selected Shapes:");
+    
+    // File path input
+    ui.text_edit_singleline(&mut ui_state.file_path);
+    
+    // Save button
+    if ui.button("Save Selected Shapes").clicked() {
+        if !ui_state.file_path.is_empty() {
+            commands.write_message(SaveSelectedShapesEvent {
+                file_path: ui_state.file_path.clone(),
+            });
+        }
+    }
+    
+    // Load button
+    if ui.button("Load Shapes from File").clicked() {
+        if !ui_state.file_path.is_empty() {
+            commands.write_message(LoadShapesFromFileEvent {
+                file_path: ui_state.file_path.clone(),
+            });
+        }
+    }
 }
 
 /// System to toggle UI visibility with a keyboard shortcut (e.g., Tab key)
