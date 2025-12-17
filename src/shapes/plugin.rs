@@ -2,9 +2,8 @@
 //!
 //! Registers resources and systems for creating, editing, and rendering shapes.
 
+use super::{resources::*, systems::*};
 use bevy::prelude::*;
-
-use crate::shapes::{resources::*, systems::*};
 
 /// `ShapesPlugin` registers shape state resources and runtime systems.
 pub struct ShapesPlugin;

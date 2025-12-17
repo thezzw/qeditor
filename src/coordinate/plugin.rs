@@ -4,9 +4,8 @@
 //! initialization of resources and registration of systems for rendering the grid
 //! and axes.
 
+use super::{resources::CoordinateSettings, systems::draw_coordinate_system};
 use bevy::prelude::*;
-
-use crate::coordinate::{resources::CoordinateSettings, systems::draw_coordinate_system};
 
 /// `CoordinatePlugin` registers the coordinate system resource and its rendering systems.
 pub struct CoordinatePlugin;

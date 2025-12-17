@@ -2,26 +2,16 @@
 //!
 //! This module defines the systems used for collision detection and visualization.
 
-use bevy::prelude::*;
-use qgeometry::shape::{QLine, QPoint, QShapeCommon};
-use qgeometry::algorithm::get_minkowski_difference;
-use qmath::vec2::QVec2;
-
-use crate::shapes::{
-    components::{Shape, PointShape, LineShape, BboxShape, CircleShape, PolygonShape, ShapeLayer},
+use super::components::{
+    CollisionVisualization, MinkowskiDifferenceVisualization, SeparationVectorVisualization,
 };
-
-/// Component to mark entities that represent collision visualization
-#[derive(Component)]
-pub struct CollisionVisualization;
-
-/// Component to mark entities that represent separation vector visualization
-#[derive(Component)]
-pub struct SeparationVectorVisualization;
-
-/// Component to mark entities that represent Minkowski difference visualization
-#[derive(Component)]
-pub struct MinkowskiDifferenceVisualization;
+use crate::shapes::components::{
+    BboxShape, CircleShape, LineShape, PointShape, PolygonShape, Shape, ShapeLayer,
+};
+use bevy::prelude::*;
+use qgeometry::algorithm::get_minkowski_difference;
+use qgeometry::shape::{QLine, QPoint, QShapeCommon};
+use qmath::vec2::QVec2;
 
 /// System to detect collisions between shapes
 pub fn detect_collisions(
@@ -46,7 +36,7 @@ pub fn detect_collisions(
     for entity in visualization_query.iter_mut() {
         commands.entity(entity).despawn();
     }
-    
+
     // Clean up existing separation vector visualizations
     for entity in separation_vector_query.iter_mut() {
         commands.entity(entity).despawn();
@@ -54,18 +44,20 @@ pub fn detect_collisions(
 
     // Get all shape entities
     let shape_entities: Vec<_> = shapes.iter().collect();
-    
+
     // Check collisions between all pairs of shapes
     for i in 0..shape_entities.len() {
         for j in (i + 1)..shape_entities.len() {
             let (_, shape_a, point_a, line_a, bbox_a, circle_a, polygon_a) = shape_entities[i];
             let (_, shape_b, point_b, line_b, bbox_b, circle_b, polygon_b) = shape_entities[j];
-            
+
             // Skip if either shape is on auxiliary layer (to avoid checking visualization shapes)
-            if shape_a.layer == ShapeLayer::AuxiliaryLine || shape_b.layer == ShapeLayer::AuxiliaryLine {
+            if shape_a.layer == ShapeLayer::AuxiliaryLine
+                || shape_b.layer == ShapeLayer::AuxiliaryLine
+            {
                 continue;
             }
-            
+
             // Check if shapes collide
             let collision_detected = if let (Some(point), _) = (point_a, point_b) {
                 if let Some(other_point) = point_b {
@@ -140,7 +132,7 @@ pub fn detect_collisions(
             } else {
                 false
             };
-            
+
             // If collision detected, create visualization for both shapes
             if collision_detected {
                 // Calculate separation vector
@@ -154,7 +146,9 @@ pub fn detect_collisions(
                     } else if let Some(other_circle) = circle_b {
                         point.point.try_get_seperation_vector(&other_circle.circle)
                     } else if let Some(other_polygon) = polygon_b {
-                        point.point.try_get_seperation_vector(&other_polygon.polygon)
+                        point
+                            .point
+                            .try_get_seperation_vector(&other_polygon.polygon)
                     } else {
                         None
                     }
@@ -194,30 +188,40 @@ pub fn detect_collisions(
                     } else if let Some(other_bbox) = bbox_b {
                         circle.circle.try_get_seperation_vector(&other_bbox.bbox)
                     } else if let Some(other_circle) = circle_b {
-                        circle.circle.try_get_seperation_vector(&other_circle.circle)
+                        circle
+                            .circle
+                            .try_get_seperation_vector(&other_circle.circle)
                     } else if let Some(other_polygon) = polygon_b {
-                        circle.circle.try_get_seperation_vector(&other_polygon.polygon)
+                        circle
+                            .circle
+                            .try_get_seperation_vector(&other_polygon.polygon)
                     } else {
                         None
                     }
                 } else if let (Some(polygon), _) = (polygon_a, polygon_b) {
                     if let Some(other_point) = point_b {
-                        polygon.polygon.try_get_seperation_vector(&other_point.point)
+                        polygon
+                            .polygon
+                            .try_get_seperation_vector(&other_point.point)
                     } else if let Some(other_line) = line_b {
                         polygon.polygon.try_get_seperation_vector(&other_line.line)
                     } else if let Some(other_bbox) = bbox_b {
                         polygon.polygon.try_get_seperation_vector(&other_bbox.bbox)
                     } else if let Some(other_circle) = circle_b {
-                        polygon.polygon.try_get_seperation_vector(&other_circle.circle)
+                        polygon
+                            .polygon
+                            .try_get_seperation_vector(&other_circle.circle)
                     } else if let Some(other_polygon) = polygon_b {
-                        polygon.polygon.try_get_seperation_vector(&other_polygon.polygon)
+                        polygon
+                            .polygon
+                            .try_get_seperation_vector(&other_polygon.polygon)
                     } else {
                         None
                     }
                 } else {
                     None
                 };
-                
+
                 // Visualize bbox for first shape
                 if let (Some(point), _) = (point_a, point_b) {
                     let bbox = point.point.get_bbox();
@@ -285,7 +289,7 @@ pub fn detect_collisions(
                         Visibility::default(),
                     ));
                 }
-                
+
                 // Visualize bbox for second shape
                 if let (_, Some(other_point)) = (point_a, point_b) {
                     let bbox = other_point.point.get_bbox();
@@ -353,11 +357,14 @@ pub fn detect_collisions(
                         Visibility::default(),
                     ));
                 }
-                
+
                 // Spawn separation vector visualization if available
-                if let Some(vector) = separation_vector && vector != QVec2::ZERO {
+                if let Some(vector) = separation_vector
+                    && vector != QVec2::ZERO
+                {
                     let start = get_shape_center(point_b, line_b, bbox_b, circle_b, polygon_b);
-                    let line = QLine::new_from_parts(start.pos(), start.pos().saturating_add(vector));
+                    let line =
+                        QLine::new_from_parts(start.pos(), start.pos().saturating_add(vector));
                     commands.spawn((
                         Shape {
                             layer: ShapeLayer::AuxiliaryLine,
@@ -399,10 +406,7 @@ fn get_shape_center(
 }
 
 /// System to visualize bounding boxes of colliding shapes
-pub fn visualize_collision_bboxes(
-    mut gizmos: Gizmos,
-    shapes: Query<(&Shape, &BboxShape)>,
-) {
+pub fn visualize_collision_bboxes(mut gizmos: Gizmos, shapes: Query<(&Shape, &BboxShape)>) {
     // Draw all bbox shapes that are on the auxiliary layer
     for (shape, bbox) in shapes.iter() {
         if shape.layer == ShapeLayer::AuxiliaryLine {
@@ -423,20 +427,17 @@ pub fn visualize_collision_bboxes(
 }
 
 /// System to visualize separation vectors as arrows
-pub fn visualize_separation_vectors(
-    mut gizmos: Gizmos,
-    vectors: Query<(&Shape, &LineShape)>,
-) {
+pub fn visualize_separation_vectors(mut gizmos: Gizmos, vectors: Query<(&Shape, &LineShape)>) {
     for (shape, qline) in vectors.iter() {
         if shape.layer == ShapeLayer::AuxiliaryLine {
             let qstart = qline.line.start();
             let qend = qline.line.end();
             let start = Vec2::new(qstart.x().to_num(), qstart.y().to_num());
             let end = Vec2::new(qend.x().to_num(), qend.y().to_num());
-            
+
             // Draw arrow line
             gizmos.line_2d(start, end, Color::srgba(0.0, 1.0, 0.0, 1.0)); // Green color
-            
+
             // Draw arrowhead
             draw_arrowhead(&mut gizmos, start, end, Color::srgba(0.0, 1.0, 0.0, 1.0));
         }
@@ -449,17 +450,17 @@ fn draw_arrowhead(gizmos: &mut Gizmos, start: Vec2, end: Vec2, color: Color) {
     if arrow_length < 0.001 {
         return;
     }
-    
+
     let direction = (end - start).normalize();
     let arrow_size = 0.2; // Size of the arrowhead
-    
+
     // Calculate perpendicular vector for arrowhead
     let perp = Vec2::new(-direction.y, direction.x) * arrow_size * 0.5;
-    
+
     // Arrowhead points
     let arrow_point1 = end - direction * arrow_size + perp;
     let arrow_point2 = end - direction * arrow_size - perp;
-    
+
     // Draw arrowhead lines
     gizmos.line_2d(end, arrow_point1, color);
     gizmos.line_2d(end, arrow_point2, color);
@@ -489,7 +490,7 @@ pub fn compute_minkowski_difference(
 
     // Find exactly two selected polygons
     let mut selected_polygons: Vec<(Entity, &PolygonShape)> = Vec::new();
-    
+
     for (entity, shape, _, _, _, _, polygon_opt) in shapes.iter() {
         if let Some(polygon) = polygon_opt {
             if shape.selected {
@@ -497,18 +498,18 @@ pub fn compute_minkowski_difference(
             }
         }
     }
-    
+
     // Only proceed if exactly two polygons are selected
     if selected_polygons.len() != 2 {
         return;
     }
-    
+
     let (_, polygon_a) = selected_polygons[0];
     let (_, polygon_b) = selected_polygons[1];
-    
+
     // Compute Minkowski difference
     let minkowski_diff = get_minkowski_difference(&polygon_a.polygon, &polygon_b.polygon);
-    
+
     // Visualize the Minkowski difference as a polygon
     commands.spawn((
         Shape {
@@ -516,7 +517,9 @@ pub fn compute_minkowski_difference(
             shape_type: minkowski_diff.get_shape_type(),
             selected: false,
         },
-        PolygonShape { polygon: minkowski_diff },
+        PolygonShape {
+            polygon: minkowski_diff,
+        },
         MinkowskiDifferenceVisualization,
         Transform::default(),
         Visibility::default(),
@@ -539,8 +542,12 @@ pub fn visualize_minkowski_difference(
             for i in 0..points.len() {
                 let current = points[i].pos();
                 let next = points[(i + 1) % points.len()].pos();
-                
-                gizmos.line_2d(qvec_to_vec2(current), qvec_to_vec2(next), Color::srgba(1.0, 0.5, 0.0, 1.0));
+
+                gizmos.line_2d(
+                    qvec_to_vec2(current),
+                    qvec_to_vec2(next),
+                    Color::srgba(1.0, 0.5, 0.0, 1.0),
+                );
             }
         } else if points.len() == 1 {
             // Draw a single point if there's only one point

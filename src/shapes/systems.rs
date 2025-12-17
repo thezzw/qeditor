@@ -5,17 +5,16 @@
 
 use std::cmp::Ordering;
 
+use super::{
+    components::{BboxShape, CircleShape, LineShape, PointShape, PolygonShape, Shape, ShapeLayer},
+    resources::{SelectedShapeType, ShapeDrawingState},
+};
+use crate::ui::resources::UiState;
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
 use qgeometry::shape::{QBbox, QCircle, QLine, QPoint, QPolygon, QShapeCommon, QShapeType};
 use qmath::prelude::*;
 use qmath::vec2::QVec2;
-
-use crate::shapes::{
-    components::{BboxShape, CircleShape, LineShape, PointShape, PolygonShape, Shape, ShapeLayer},
-    resources::{SelectedShapeType, ShapeDrawingState},
-};
-use crate::ui::systems::UiState;
 
 /// System to handle shape interaction (creation, selection, etc.)
 pub fn handle_shape_interaction(
@@ -158,18 +157,20 @@ pub fn handle_shape_interaction(
             } else {
                 if selected_shape_type.shape_type == Some(QShapeType::QPoint) {
                     // Start drawing a new point
-                    let entity = commands.spawn((
-                        Shape {
-                            layer: ShapeLayer::MainScene,
-                            shape_type: QShapeType::QPoint,
-                            selected: false,
-                        },
-                        PointShape {
-                            point: qworld_point,
-                        },
-                        Transform::default(),
-                        Visibility::default(),
-                    )).id();
+                    let entity = commands
+                        .spawn((
+                            Shape {
+                                layer: ShapeLayer::MainScene,
+                                shape_type: QShapeType::QPoint,
+                                selected: false,
+                            },
+                            PointShape {
+                                point: qworld_point,
+                            },
+                            Transform::default(),
+                            Visibility::default(),
+                        ))
+                        .id();
                     shape_drawing_state.current_shape = Some(entity);
                     shape_drawing_state.start_position = Some(qworld_pos);
                     return;

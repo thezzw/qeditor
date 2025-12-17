@@ -2,9 +2,9 @@
 //!
 //! Registers systems for saving and loading selected shapes from the MainScene layer.
 
+use super::components::*;
+use super::systems::*;
 use bevy::prelude::*;
-
-use crate::save_load::systems::*;
 
 /// `SaveLoadPlugin` handles saving and loading of selected shapes.
 pub struct SaveLoadPlugin;

@@ -3,9 +3,8 @@
 //! This module defines the systems used for the coordinate system functionality,
 //! including rendering axes and grid lines.
 
-use bevy::prelude::*;
-
 use crate::coordinate::resources::CoordinateSettings;
+use bevy::prelude::*;
 
 fn draw_grids(gizmos: &mut Gizmos, spacing: f32, color: Color, camera_transform: &GlobalTransform) {
     // Get the camera viewport to determine the visible area
@@ -33,11 +32,7 @@ fn draw_grids(gizmos: &mut Gizmos, spacing: f32, color: Color, camera_transform:
         let x_pos = x as f32 * spacing;
         if x_pos != 0.0 {
             // Skip the axis line
-            gizmos.line_2d(
-                Vec2::new(x_pos, bottom),
-                Vec2::new(x_pos, top),
-                color,
-            );
+            gizmos.line_2d(Vec2::new(x_pos, bottom), Vec2::new(x_pos, top), color);
         }
     }
 
@@ -46,11 +41,7 @@ fn draw_grids(gizmos: &mut Gizmos, spacing: f32, color: Color, camera_transform:
         let y_pos = y as f32 * spacing;
         if y_pos != 0.0 {
             // Skip the axis line
-            gizmos.line_2d(
-                Vec2::new(left, y_pos),
-                Vec2::new(right, y_pos),
-                color,
-            );
+            gizmos.line_2d(Vec2::new(left, y_pos), Vec2::new(right, y_pos), color);
         }
     }
 }
@@ -94,6 +85,16 @@ pub fn draw_coordinate_system(
         coordinate_settings.y_axis_color,
     );
 
-    draw_grids(&mut gizmos, coordinate_settings.grid_spacing, coordinate_settings.grid_color, camera_transform);
-    draw_grids(&mut gizmos, coordinate_settings.chunk_spacing, coordinate_settings.chunk_color, camera_transform);
+    draw_grids(
+        &mut gizmos,
+        coordinate_settings.grid_spacing,
+        coordinate_settings.grid_color,
+        camera_transform,
+    );
+    draw_grids(
+        &mut gizmos,
+        coordinate_settings.chunk_spacing,
+        coordinate_settings.chunk_color,
+        camera_transform,
+    );
 }

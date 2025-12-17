@@ -3,46 +3,17 @@
 //! This module defines the systems used for the egui-based user interface,
 //! including the graphics editing panel.
 
+use super::resources::UiState;
+use crate::save_load::components::{LoadShapesFromFileEvent, SaveSelectedShapesEvent};
+use crate::shapes::components::{
+    BboxShape, CircleShape, LineShape, PointShape, PolygonShape, Shape, ShapeLayer,
+};
 use bevy::prelude::*;
 use bevy_egui::{
     EguiContexts,
     egui::{self, Ui},
 };
 use qgeometry::shape::QShapeType;
-
-// Import shape components to query them
-use crate::shapes::components::{
-    BboxShape, CircleShape, LineShape, PointShape, PolygonShape, Shape, ShapeLayer,
-};
-// Import save/load events
-use crate::save_load::systems::{SaveSelectedShapesEvent, LoadShapesFromFileEvent};
-
-/// Resource to track UI visibility state
-#[derive(Resource)]
-pub struct UiState {
-    /// Whether the graphics editor panel is visible
-    pub panel_visible: bool,
-    /// Currently selected shape type for drawing
-    pub selected_shape: Option<QShapeType>,
-    /// Currently selected shape layer
-    pub selected_layer: ShapeLayer,
-    /// File path for saving/loading shapes
-    pub file_path: String,
-    /// Whether to enable snap to grid
-    pub enable_snap: bool,
-}
-
-impl Default for UiState {
-    fn default() -> Self {
-        Self {
-            panel_visible: false,
-            selected_shape: None,
-            selected_layer: ShapeLayer::MainScene,
-            file_path: "assets/save/default.json".to_string(),
-            enable_snap: true,
-        }
-    }
-}
 
 /// System to render the egui UI
 pub fn draw_editor_ui(
@@ -92,105 +63,50 @@ fn draw_shape_editor(
 ) {
     // Toggle buttons for shape types
     ui.label("Select Shape Type:");
-
-    if ui
-        .add(
-            egui::Button::new("Point")
-                .selected(matches!(ui_state.selected_shape, Some(QShapeType::QPoint))),
-        )
-        .clicked()
-    {
-        ui_state.selected_shape = Some(QShapeType::QPoint);
-    }
-
-    if ui
-        .add(
-            egui::Button::new("Line")
-                .selected(matches!(ui_state.selected_shape, Some(QShapeType::QLine))),
-        )
-        .clicked()
-    {
-        ui_state.selected_shape = Some(QShapeType::QLine);
-    }
-
-    if ui
-        .add(
-            egui::Button::new("Rectangle (BBox)")
-                .selected(matches!(ui_state.selected_shape, Some(QShapeType::QBbox))),
-        )
-        .clicked()
-    {
-        ui_state.selected_shape = Some(QShapeType::QBbox);
-    }
-
-    if ui
-        .add(
-            egui::Button::new("Circle")
-                .selected(matches!(ui_state.selected_shape, Some(QShapeType::QCircle))),
-        )
-        .clicked()
-    {
-        ui_state.selected_shape = Some(QShapeType::QCircle);
-    }
-
-    if ui
-        .add(egui::Button::new("Polygon").selected(matches!(
-            ui_state.selected_shape,
-            Some(QShapeType::QPolygon)
-        )))
-        .clicked()
-    {
-        ui_state.selected_shape = Some(QShapeType::QPolygon);
-    }
-
-    // Clear selection button
-    if ui.button("Clear Selection").clicked() {
-        ui_state.selected_shape = None;
-    }
-
-    // Display current selection
-    ui.separator();
-    ui.label("Current Selection:");
-    match ui_state.selected_shape {
-        Some(QShapeType::QPoint) => {
-            ui.label("Point");
-        }
-        Some(QShapeType::QLine) => {
-            ui.label("Line");
-        }
-        Some(QShapeType::QBbox) => {
-            ui.label("Rectangle");
-        }
-        Some(QShapeType::QCircle) => {
-            ui.label("Circle");
-        }
-        Some(QShapeType::QPolygon) => {
-            ui.label("Polygon");
-        }
-        None => {
-            ui.label("No shape selected");
-        }
-    }
+    ui.horizontal(|ui| {
+        ui.selectable_value(
+            &mut ui_state.selected_shape,
+            Some(QShapeType::QPoint),
+            "Point",
+        );
+        ui.selectable_value(
+            &mut ui_state.selected_shape,
+            Some(QShapeType::QLine),
+            "Line",
+        );
+        ui.selectable_value(
+            &mut ui_state.selected_shape,
+            Some(QShapeType::QBbox),
+            "BBox",
+        );
+        ui.selectable_value(
+            &mut ui_state.selected_shape,
+            Some(QShapeType::QCircle),
+            "Circle",
+        );
+        ui.selectable_value(
+            &mut ui_state.selected_shape,
+            Some(QShapeType::QPolygon),
+            "Polygon",
+        );
+        ui.selectable_value(&mut ui_state.selected_shape, None, "None");
+    });
 
     // Layer selection buttons
     ui.separator();
     ui.label("Select Layer:");
-    
-    // Main Scene layer button
-    if ui.add(
-        egui::Button::new("Main Scene")
-            .selected(matches!(ui_state.selected_layer, ShapeLayer::MainScene)),
-    ).clicked() {
-        ui_state.selected_layer = ShapeLayer::MainScene;
-    }
-    
-    // Auxiliary Line layer button
-    if ui.add(
-        egui::Button::new("Auxiliary Line")
-            .selected(matches!(ui_state.selected_layer, ShapeLayer::AuxiliaryLine)),
-    ).clicked() {
-        ui_state.selected_layer = ShapeLayer::AuxiliaryLine;
-    }
+    ui.horizontal(|ui| {
+        ui.selectable_value(
+            &mut ui_state.selected_layer,
+            ShapeLayer::MainScene,
+            "MainScene",
+        );
+        ui.selectable_value(
+            &mut ui_state.selected_layer,
+            ShapeLayer::AuxiliaryLine,
+            "AuxiliaryLine",
+        );
+    });
 
     // Display list of shapes for the selected layer
     ui.separator();
@@ -208,7 +124,7 @@ fn draw_shape_editor(
                 if shape.layer != ui_state.selected_layer {
                     continue;
                 }
-                
+
                 // Create a descriptive label for each shape
                 let shape_label = match shape.shape_type {
                     QShapeType::QPoint => {
@@ -269,19 +185,15 @@ fn draw_shape_editor(
                     }
                 };
 
-                // Create a selectable label for the shape
-                let response =
-                    ui.selectable_label(shape.selected, shape_label);
-
                 // Handle click on the shape in the list
-                if response.clicked() {
+                if ui.selectable_label(shape.selected, shape_label).clicked() {
                     // Toggle selection state of the clicked shape
                     let new_selected_state = !shape.selected;
                     if let Ok(mut entity_commands) = commands.get_entity(entity) {
                         entity_commands.insert(Shape {
                             layer: shape.layer,
                             shape_type: shape.shape_type,
-                            selected: new_selected_state,  // Toggle the selection state
+                            selected: new_selected_state, // Toggle the selection state
                         });
                     }
                 }
@@ -292,19 +204,19 @@ fn draw_shape_editor(
                 .iter()
                 .filter(|(_, shape, _, _, _, _, _)| shape.layer == ui_state.selected_layer)
                 .collect();
-                
+
             if shapes_in_selected_layer.is_empty() {
                 ui.label("No shapes in the selected layer");
             }
         });
-    
+
     // Add save/load functionality
     ui.separator();
     ui.label("Save/Load Selected Shapes:");
-    
+
     // File path input
     ui.text_edit_singleline(&mut ui_state.file_path);
-    
+
     // Save button
     if ui.button("Save Selected Shapes").clicked() {
         if !ui_state.file_path.is_empty() {
@@ -313,7 +225,7 @@ fn draw_shape_editor(
             });
         }
     }
-    
+
     // Load button
     if ui.button("Load Shapes from File").clicked() {
         if !ui_state.file_path.is_empty() {
@@ -322,10 +234,9 @@ fn draw_shape_editor(
             });
         }
     }
-    
+
     // Snap to grid checkbox
     ui.separator();
-    ui.label("Grid Settings:");
     ui.checkbox(&mut ui_state.enable_snap, "Snap to Grid");
 }
 

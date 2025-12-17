@@ -2,10 +2,10 @@
 //!
 //! Registers the egui UI state resource and the systems that render the editor UI.
 
+use super::resources::UiState;
+use super::systems::{draw_editor_ui, toggle_ui_visibility};
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
-
-use crate::ui::systems::{UiState, draw_editor_ui, toggle_ui_visibility};
 
 /// `UiPlugin` handles UI state and registers UI systems.
 pub struct UiPlugin;
