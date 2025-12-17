@@ -14,8 +14,7 @@ pub fn setup(mut commands: Commands) {
 /// System to handle camera panning with the middle mouse button.
 pub fn camera_pan(
     mut camera_query: Query<(&mut Transform, &mut CameraMovement), With<Camera2d>>,
-    mouse_button_input: Res<ButtonInput<MouseButton>>,
-    windows: Query<&Window, With<PrimaryWindow>>,
+    mouse_button_input: Res<ButtonInput<MouseButton>>, windows: Query<&Window, With<PrimaryWindow>>,
 ) {
     let window = match windows.single() {
         Ok(w) => w,
@@ -47,8 +46,7 @@ pub fn camera_pan(
 
 /// System to handle camera zooming with mouse wheel.
 pub fn camera_zoom(
-    mut camera_query: Query<&mut Transform, With<Camera2d>>,
-    mut mouse_wheel_events: MessageReader<MouseWheel>,
+    mut camera_query: Query<&mut Transform, With<Camera2d>>, mut mouse_wheel_events: MessageReader<MouseWheel>,
     windows: Query<&Window, With<PrimaryWindow>>,
 ) {
     let _window = match windows.single() {
@@ -72,7 +70,5 @@ pub fn camera_zoom(
     }
 
     // Limit how far the user can zoom in or out.
-    camera_transform.scale = camera_transform
-        .scale
-        .clamp(Vec3::splat(0.01), Vec3::splat(0.1));
+    camera_transform.scale = camera_transform.scale.clamp(Vec3::splat(0.01), Vec3::splat(0.1));
 }

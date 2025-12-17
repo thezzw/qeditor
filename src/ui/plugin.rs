@@ -15,9 +15,6 @@ impl Plugin for UiPlugin {
         // Initialize the UI state (Default) resource consistently.
         app.init_resource::<UiState>()
             // Register UI systems that require egui context
-            .add_systems(
-                EguiPrimaryContextPass,
-                (draw_editor_ui, toggle_ui_visibility),
-            );
+            .add_systems(EguiPrimaryContextPass, (draw_editor_ui, toggle_ui_visibility));
     }
 }

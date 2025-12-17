@@ -3,11 +3,9 @@
 //! This module defines the systems used for the egui-based user interface,
 //! including the graphics editing panel.
 
-use super::resources::UiState;
+use super::resources::{EditorMode, UiState};
 use crate::save_load::components::{LoadShapesFromFileEvent, SaveSelectedShapesEvent};
-use crate::shapes::components::{
-    BboxShape, CircleShape, LineShape, PointShape, PolygonShape, Shape, ShapeLayer,
-};
+use crate::shapes::components::{EditorShape, QBboxData, QCircleData, QLineData, QPointData, QPolygonData, ShapeLayer};
 use bevy::prelude::*;
 use bevy_egui::{
     EguiContexts,
@@ -23,12 +21,12 @@ pub fn draw_editor_ui(
     // Query all shapes to display in the list
     shapes_query: Query<(
         Entity,
-        &Shape,
-        Option<&PointShape>,
-        Option<&LineShape>,
-        Option<&BboxShape>,
-        Option<&CircleShape>,
-        Option<&PolygonShape>,
+        &EditorShape,
+        Option<&QPointData>,
+        Option<&QLineData>,
+        Option<&QBboxData>,
+        Option<&QCircleData>,
+        Option<&QPolygonData>,
     )>,
 ) {
     if !ui_state.panel_visible {
@@ -36,14 +34,25 @@ pub fn draw_editor_ui(
     }
 
     if let Ok(ctx) = contexts.ctx_mut() {
-        egui::Window::new("Graphics Editor")
+        egui::Window::new("QEditor")
             .resizable(true)
             .default_size(egui::Vec2::new(300.0, 400.0))
             .show(ctx, |ui| {
-                ui.heading("Graphics Editor");
-                draw_shape_editor(ui, commands, &mut ui_state, shapes_query);
+                ui.horizontal(|ui| {
+                    ui.selectable_value(&mut ui_state.editor_mode, EditorMode::Shape, "Shape");
+                    ui.selectable_value(&mut ui_state.editor_mode, EditorMode::Physics, "Physics");
+                });
+
+                match ui_state.editor_mode {
+                    EditorMode::Shape => draw_shape_editor(ui, commands, &mut ui_state, shapes_query),
+                    EditorMode::Physics => draw_physics_editor(ui, commands, &mut ui_state),
+                }
             });
     }
+}
+
+fn draw_physics_editor(ui: &mut Ui, mut commands: Commands, ui_state: &mut UiState) {
+    ui.heading("Physics Editor");
 }
 
 fn draw_shape_editor(
@@ -53,42 +62,23 @@ fn draw_shape_editor(
     // Query selected shape to edit
     shapes_query: Query<(
         Entity,
-        &Shape,
-        Option<&PointShape>,
-        Option<&LineShape>,
-        Option<&BboxShape>,
-        Option<&CircleShape>,
-        Option<&PolygonShape>,
+        &EditorShape,
+        Option<&QPointData>,
+        Option<&QLineData>,
+        Option<&QBboxData>,
+        Option<&QCircleData>,
+        Option<&QPolygonData>,
     )>,
 ) {
+    ui.heading("Shape Editor");
     // Toggle buttons for shape types
-    ui.label("Select Shape Type:");
+    ui.label("Select EditorShape Type:");
     ui.horizontal(|ui| {
-        ui.selectable_value(
-            &mut ui_state.selected_shape,
-            Some(QShapeType::QPoint),
-            "Point",
-        );
-        ui.selectable_value(
-            &mut ui_state.selected_shape,
-            Some(QShapeType::QLine),
-            "Line",
-        );
-        ui.selectable_value(
-            &mut ui_state.selected_shape,
-            Some(QShapeType::QBbox),
-            "BBox",
-        );
-        ui.selectable_value(
-            &mut ui_state.selected_shape,
-            Some(QShapeType::QCircle),
-            "Circle",
-        );
-        ui.selectable_value(
-            &mut ui_state.selected_shape,
-            Some(QShapeType::QPolygon),
-            "Polygon",
-        );
+        ui.selectable_value(&mut ui_state.selected_shape, Some(QShapeType::QPoint), "Point");
+        ui.selectable_value(&mut ui_state.selected_shape, Some(QShapeType::QLine), "Line");
+        ui.selectable_value(&mut ui_state.selected_shape, Some(QShapeType::QBbox), "BBox");
+        ui.selectable_value(&mut ui_state.selected_shape, Some(QShapeType::QCircle), "Circle");
+        ui.selectable_value(&mut ui_state.selected_shape, Some(QShapeType::QPolygon), "Polygon");
         ui.selectable_value(&mut ui_state.selected_shape, None, "None");
     });
 
@@ -96,16 +86,9 @@ fn draw_shape_editor(
     ui.separator();
     ui.label("Select Layer:");
     ui.horizontal(|ui| {
-        ui.selectable_value(
-            &mut ui_state.selected_layer,
-            ShapeLayer::MainScene,
-            "MainScene",
-        );
-        ui.selectable_value(
-            &mut ui_state.selected_layer,
-            ShapeLayer::AuxiliaryLine,
-            "AuxiliaryLine",
-        );
+        ui.selectable_value(&mut ui_state.selected_layer, ShapeLayer::MainScene, "MainScene");
+        ui.selectable_value(&mut ui_state.selected_layer, ShapeLayer::AuxiliaryLine, "AuxiliaryLine");
+        ui.selectable_value(&mut ui_state.selected_layer, ShapeLayer::Generated, "Generated");
     });
 
     // Display list of shapes for the selected layer
@@ -113,102 +96,98 @@ fn draw_shape_editor(
     ui.label("Drawn Shapes:");
 
     // Scroll area for the shapes list
-    egui::ScrollArea::vertical()
-        .max_height(200.0)
-        .show(ui, |ui| {
-            // Iterate through shapes and display only those in the selected layer
-            for (entity, shape, point_opt, line_opt, bbox_opt, circle_opt, polygon_opt) in
-                shapes_query.iter()
-            {
-                // Only show shapes that belong to the selected layer
-                if shape.layer != ui_state.selected_layer {
-                    continue;
-                }
-
-                // Create a descriptive label for each shape
-                let shape_label = match shape.shape_type {
-                    QShapeType::QPoint => {
-                        if let Some(point) = point_opt {
-                            format!(
-                                "Point ({:.2}, {:.2})",
-                                point.point.pos().x.to_num::<f32>(),
-                                point.point.pos().y.to_num::<f32>()
-                            )
-                        } else {
-                            "Point".to_string()
-                        }
-                    }
-                    QShapeType::QLine => {
-                        if let Some(line) = line_opt {
-                            format!(
-                                "Line ({:.2}, {:.2}) -> ({:.2}, {:.2})",
-                                line.line.start().pos().x.to_num::<f32>(),
-                                line.line.start().pos().y.to_num::<f32>(),
-                                line.line.end().pos().x.to_num::<f32>(),
-                                line.line.end().pos().y.to_num::<f32>()
-                            )
-                        } else {
-                            "Line".to_string()
-                        }
-                    }
-                    QShapeType::QBbox => {
-                        if let Some(bbox) = bbox_opt {
-                            format!(
-                                "Rectangle ({:.2}, {:.2}) -> ({:.2}, {:.2})",
-                                bbox.bbox.left_bottom().pos().x.to_num::<f32>(),
-                                bbox.bbox.left_bottom().pos().y.to_num::<f32>(),
-                                bbox.bbox.right_top().pos().x.to_num::<f32>(),
-                                bbox.bbox.right_top().pos().y.to_num::<f32>()
-                            )
-                        } else {
-                            "Rectangle".to_string()
-                        }
-                    }
-                    QShapeType::QCircle => {
-                        if let Some(circle) = circle_opt {
-                            format!(
-                                "Circle ({:.2}, {:.2}), r={:.2}",
-                                circle.circle.center().pos().x.to_num::<f32>(),
-                                circle.circle.center().pos().y.to_num::<f32>(),
-                                circle.circle.radius().to_num::<f32>()
-                            )
-                        } else {
-                            "Circle".to_string()
-                        }
-                    }
-                    QShapeType::QPolygon => {
-                        if let Some(polygon) = polygon_opt {
-                            format!("Polygon ({} vertices)", polygon.polygon.points().len())
-                        } else {
-                            "Polygon".to_string()
-                        }
-                    }
-                };
-
-                // Handle click on the shape in the list
-                if ui.selectable_label(shape.selected, shape_label).clicked() {
-                    // Toggle selection state of the clicked shape
-                    let new_selected_state = !shape.selected;
-                    if let Ok(mut entity_commands) = commands.get_entity(entity) {
-                        entity_commands.insert(Shape {
-                            layer: shape.layer,
-                            shape_type: shape.shape_type,
-                            selected: new_selected_state, // Toggle the selection state
-                        });
-                    }
-                }
+    egui::ScrollArea::vertical().max_height(200.0).show(ui, |ui| {
+        // Iterate through shapes and display only those in the selected layer
+        for (entity, shape, point_opt, line_opt, bbox_opt, circle_opt, polygon_opt) in shapes_query.iter() {
+            // Only show shapes that belong to the selected layer
+            if shape.layer != ui_state.selected_layer {
+                continue;
             }
 
-            // Handle case when no shapes exist in the selected layer
-            let shapes_in_selected_layer: Vec<_> = shapes_query
-                .iter()
-                .filter(|(_, shape, _, _, _, _, _)| shape.layer == ui_state.selected_layer)
-                .collect();
+            // Create a descriptive label for each shape
+            let shape_label = match shape.shape_type {
+                QShapeType::QPoint => {
+                    if let Some(point) = point_opt {
+                        format!(
+                            "Point ({:.2}, {:.2})",
+                            point.data.pos().x.to_num::<f32>(),
+                            point.data.pos().y.to_num::<f32>()
+                        )
+                    } else {
+                        "Point".to_string()
+                    }
+                }
+                QShapeType::QLine => {
+                    if let Some(line) = line_opt {
+                        format!(
+                            "Line ({:.2}, {:.2}) -> ({:.2}, {:.2})",
+                            line.data.start().pos().x.to_num::<f32>(),
+                            line.data.start().pos().y.to_num::<f32>(),
+                            line.data.end().pos().x.to_num::<f32>(),
+                            line.data.end().pos().y.to_num::<f32>()
+                        )
+                    } else {
+                        "Line".to_string()
+                    }
+                }
+                QShapeType::QBbox => {
+                    if let Some(bbox) = bbox_opt {
+                        format!(
+                            "Rectangle ({:.2}, {:.2}) -> ({:.2}, {:.2})",
+                            bbox.data.left_bottom().pos().x.to_num::<f32>(),
+                            bbox.data.left_bottom().pos().y.to_num::<f32>(),
+                            bbox.data.right_top().pos().x.to_num::<f32>(),
+                            bbox.data.right_top().pos().y.to_num::<f32>()
+                        )
+                    } else {
+                        "Rectangle".to_string()
+                    }
+                }
+                QShapeType::QCircle => {
+                    if let Some(circle) = circle_opt {
+                        format!(
+                            "Circle ({:.2}, {:.2}), r={:.2}",
+                            circle.data.center().pos().x.to_num::<f32>(),
+                            circle.data.center().pos().y.to_num::<f32>(),
+                            circle.data.radius().to_num::<f32>()
+                        )
+                    } else {
+                        "Circle".to_string()
+                    }
+                }
+                QShapeType::QPolygon => {
+                    if let Some(polygon) = polygon_opt {
+                        format!("Polygon ({} vertices)", polygon.data.points().len())
+                    } else {
+                        "Polygon".to_string()
+                    }
+                }
+            };
 
-            if shapes_in_selected_layer.is_empty() {
-                ui.label("No shapes in the selected layer");
+            // Handle click on the shape in the list
+            if ui.selectable_label(shape.selected, shape_label).clicked() {
+                // Toggle selection state of the clicked shape
+                let new_selected_state = !shape.selected;
+                if let Ok(mut entity_commands) = commands.get_entity(entity) {
+                    entity_commands.insert(EditorShape {
+                        layer: shape.layer,
+                        shape_type: shape.shape_type,
+                        selected: new_selected_state, // Toggle the selection state
+                    });
+                }
             }
-        });
+        }
+
+        // Handle case when no shapes exist in the selected layer
+        let shapes_in_selected_layer: Vec<_> = shapes_query
+            .iter()
+            .filter(|(_, shape, _, _, _, _, _)| shape.layer == ui_state.selected_layer)
+            .collect();
+
+        if shapes_in_selected_layer.is_empty() {
+            ui.label("No shapes in the selected layer");
+        }
+    });
 
     // Add save/load functionality
     ui.separator();
@@ -237,14 +216,13 @@ fn draw_shape_editor(
 
     // Snap to grid checkbox
     ui.separator();
+    ui.label("Options:");
     ui.checkbox(&mut ui_state.enable_snap, "Snap to Grid");
+    ui.checkbox(&mut ui_state.only_show_select_layer, "Only Show Selected Layer");
 }
 
 /// System to toggle UI visibility with a keyboard shortcut (e.g., Tab key)
-pub fn toggle_ui_visibility(
-    mut ui_state: ResMut<UiState>,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-) {
+pub fn toggle_ui_visibility(mut ui_state: ResMut<UiState>, keyboard_input: Res<ButtonInput<KeyCode>>) {
     if keyboard_input.just_pressed(KeyCode::Tab) {
         ui_state.panel_visible = !ui_state.panel_visible;
     }

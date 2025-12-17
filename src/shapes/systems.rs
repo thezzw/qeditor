@@ -6,7 +6,7 @@
 use std::cmp::Ordering;
 
 use super::{
-    components::{BboxShape, CircleShape, LineShape, PointShape, PolygonShape, Shape, ShapeLayer},
+    components::{EditorShape, QBboxData, QCircleData, QLineData, QPointData, QPolygonData, ShapeLayer},
     resources::{SelectedShapeType, ShapeDrawingState},
 };
 use crate::ui::resources::UiState;
@@ -19,7 +19,7 @@ use qmath::vec2::QVec2;
 /// System to handle shape interaction (creation, selection, etc.)
 pub fn handle_shape_interaction(
     mut commands: Commands,
-    mut polygon_query: Query<&mut PolygonShape>,
+    mut polygon_query: Query<&mut QPolygonData>,
     mouse_button_input: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window>,
     camera_q: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
@@ -40,9 +40,7 @@ pub fn handle_shape_interaction(
     }
 
     // Update the selected shape type based on UI state
-    if ui_state.selected_shape.is_none()
-        || ui_state.selected_shape != selected_shape_type.shape_type
-    {
+    if ui_state.selected_shape.is_none() || ui_state.selected_shape != selected_shape_type.shape_type {
         // If no shape is selected in UI, reset drawing state
         shape_drawing_state.start_position = None;
         if let Some(entity) = shape_drawing_state.current_shape {
@@ -76,8 +74,7 @@ pub fn handle_shape_interaction(
         return;
     };
 
-    let world_pos = if let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, cursor_pos)
-    {
+    let world_pos = if let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, cursor_pos) {
         world_pos
     } else {
         // Fallback calculation if camera conversion fails
@@ -113,24 +110,20 @@ pub fn handle_shape_interaction(
                     }
                     match selected_shape_type.shape_type.unwrap() {
                         QShapeType::QPoint => {
-                            commands.entity(entity).insert(PointShape {
-                                point: qworld_point,
-                            });
+                            commands.entity(entity).insert(QPointData { data: qworld_point });
                         }
                         QShapeType::QLine => {
                             // For line shapes, we need to get the current line to update it
                             // Since we can't directly access the component, we'll recreate it with the new end point
                             let new_line = QLine::new(start_point, qworld_point);
-                            commands.entity(entity).insert(LineShape { line: new_line });
+                            commands.entity(entity).insert(QLineData { data: new_line });
                         }
                         QShapeType::QBbox => {
                             // Update the bounding box with the second corner
                             // Ensure a proper bounding box is being created
                             match start_point.pos().partial_cmp(&qworld_pos) {
                                 Some(Ordering::Less) => {
-                                    if start_point.pos().x == qworld_pos.x
-                                        || start_point.pos().y == qworld_pos.y
-                                    {
+                                    if start_point.pos().x == qworld_pos.x || start_point.pos().y == qworld_pos.y {
                                         return;
                                     }
                                 }
@@ -139,7 +132,7 @@ pub fn handle_shape_interaction(
                                 }
                             }
                             let new_bbox = QBbox::new_from_parts(start_point.pos(), qworld_pos);
-                            commands.entity(entity).insert(BboxShape { bbox: new_bbox });
+                            commands.entity(entity).insert(QBboxData { data: new_bbox });
                         }
                         QShapeType::QCircle => {
                             // Update the circle radius based on distance from center
@@ -147,9 +140,7 @@ pub fn handle_shape_interaction(
                             let dy = qworld_pos.y - start_pos.y;
                             let radius = (dx * dx + dy * dy).sqrt();
                             let new_circle = QCircle::new(start_point, Q64::from_num(radius));
-                            commands
-                                .entity(entity)
-                                .insert(CircleShape { circle: new_circle });
+                            commands.entity(entity).insert(QCircleData { data: new_circle });
                         }
                         _ => {}
                     }
@@ -159,14 +150,12 @@ pub fn handle_shape_interaction(
                     // Start drawing a new point
                     let entity = commands
                         .spawn((
-                            Shape {
-                                layer: ShapeLayer::MainScene,
+                            EditorShape {
+                                layer: ui_state.selected_layer,
                                 shape_type: QShapeType::QPoint,
                                 selected: false,
                             },
-                            PointShape {
-                                point: qworld_point,
-                            },
+                            QPointData { data: qworld_point },
                             Transform::default(),
                             Visibility::default(),
                         ))
@@ -183,13 +172,13 @@ pub fn handle_shape_interaction(
                 // Get the current polygon component
                 if let Ok(mut polygon_shape) = polygon_query.get_mut(entity) {
                     // Add new vertex to existing polygon
-                    let mut points: Vec<QPoint> = polygon_shape.polygon.points().clone();
+                    let mut points: Vec<QPoint> = polygon_shape.data.points().clone();
                     let last_point = points.last_mut().unwrap();
                     last_point.set_pos(qworld_pos);
 
                     // Create new polygon with updated points
                     let new_polygon = QPolygon::new(points);
-                    polygon_shape.polygon = new_polygon;
+                    polygon_shape.data = new_polygon;
                 }
             }
         }
@@ -210,10 +199,7 @@ pub fn handle_shape_interaction(
         if shape_drawing_state.current_shape.is_some() {
             // Handle ongoing shape drawing
             match shape_type {
-                QShapeType::QPoint
-                | QShapeType::QLine
-                | QShapeType::QBbox
-                | QShapeType::QCircle => {
+                QShapeType::QPoint | QShapeType::QLine | QShapeType::QBbox | QShapeType::QCircle => {
                     // Finalize the current shape
                     if let Some(_entity) = shape_drawing_state.current_shape {
                         // Finalize shape properties based on second click
@@ -226,12 +212,12 @@ pub fn handle_shape_interaction(
                         // Get the current polygon component
                         if let Ok(mut polygon_shape) = polygon_query.get_mut(entity) {
                             // Add new vertex to existing polygon
-                            let mut points: Vec<QPoint> = polygon_shape.polygon.points().clone();
+                            let mut points: Vec<QPoint> = polygon_shape.data.points().clone();
                             points.push(qworld_point);
 
                             // Create new polygon with updated points
                             let new_polygon = QPolygon::new(points);
-                            polygon_shape.polygon = new_polygon;
+                            polygon_shape.data = new_polygon;
                         }
                     }
                 }
@@ -246,25 +232,19 @@ pub fn handle_shape_interaction(
         match selected_shape_type.shape_type.unwrap() {
             QShapeType::QPoint => {
                 // Should not reach here since point is finalized immediately
-                assert!(
-                    false,
-                    "Point shape should be finalized immediately on click."
-                );
+                assert!(false, "Point shape should be finalized immediately on click.");
             }
             QShapeType::QLine => {
                 // Create a line shape with both points at the same location initially
-                let qline = QLine::new(
-                    qworld_point,
-                    QPoint::new(qworld_pos.saturating_add_num(Q64::EPS)),
-                );
+                let qline = QLine::new(qworld_point, QPoint::new(qworld_pos.saturating_add_num(Q64::EPS)));
                 let entity = commands
                     .spawn((
-                        Shape {
-                            layer: ShapeLayer::MainScene,
+                        EditorShape {
+                            layer: ui_state.selected_layer,
                             shape_type: QShapeType::QLine,
                             selected: false,
                         },
-                        LineShape { line: qline },
+                        QLineData { data: qline },
                         Transform::default(),
                         Visibility::default(),
                     ))
@@ -273,16 +253,15 @@ pub fn handle_shape_interaction(
             }
             QShapeType::QBbox => {
                 // Create a bounding box shape
-                let qbbox =
-                    QBbox::new_from_parts(qworld_pos, qworld_pos.saturating_add_num(Q64::EPS));
+                let qbbox = QBbox::new_from_parts(qworld_pos, qworld_pos.saturating_add_num(Q64::EPS));
                 let entity = commands
                     .spawn((
-                        Shape {
-                            layer: ShapeLayer::MainScene,
+                        EditorShape {
+                            layer: ui_state.selected_layer,
                             shape_type: QShapeType::QBbox,
                             selected: false,
                         },
-                        BboxShape { bbox: qbbox },
+                        QBboxData { data: qbbox },
                         Transform::default(),
                         Visibility::default(),
                     ))
@@ -294,12 +273,12 @@ pub fn handle_shape_interaction(
                 let qcircle = QCircle::new(qworld_point, Q64::EPS); // Default radius of Q64::EPS
                 let entity = commands
                     .spawn((
-                        Shape {
-                            layer: ShapeLayer::MainScene,
+                        EditorShape {
+                            layer: ui_state.selected_layer,
                             shape_type: QShapeType::QCircle,
                             selected: false,
                         },
-                        CircleShape { circle: qcircle },
+                        QCircleData { data: qcircle },
                         Transform::default(),
                         Visibility::default(),
                     ))
@@ -311,12 +290,12 @@ pub fn handle_shape_interaction(
                 let qpolygon = QPolygon::new(vec![qworld_point, qworld_point]);
                 let entity = commands
                     .spawn((
-                        Shape {
-                            layer: ShapeLayer::MainScene,
+                        EditorShape {
+                            layer: ui_state.selected_layer,
                             shape_type: QShapeType::QPolygon,
                             selected: false,
                         },
-                        PolygonShape { polygon: qpolygon },
+                        QPolygonData { data: qpolygon },
                         Transform::default(),
                         Visibility::default(),
                     ))
@@ -330,19 +309,24 @@ pub fn handle_shape_interaction(
 /// System to draw shapes using gizmos
 pub fn draw_shapes(
     mut gizmos: Gizmos,
+    ui_state: Res<UiState>,
     shapes: Query<(
-        &Shape,
-        Option<&PointShape>,
-        Option<&LineShape>,
-        Option<&BboxShape>,
-        Option<&CircleShape>,
-        Option<&PolygonShape>,
+        &EditorShape,
+        Option<&QPointData>,
+        Option<&QLineData>,
+        Option<&QBboxData>,
+        Option<&QCircleData>,
+        Option<&QPolygonData>,
     )>,
 ) {
     fn qvec_to_vec2(v: QVec2) -> Vec2 {
         Vec2::new(v.x.to_num::<f32>(), v.y.to_num::<f32>())
     }
     for (shape, point_opt, line_opt, bbox_opt, circle_opt, polygon_opt) in shapes.iter() {
+        if ui_state.only_show_select_layer && shape.layer != ui_state.selected_layer {
+            continue;
+        }
+
         // Set color based on selection state
         let color = if shape.selected {
             Color::srgba(0.0, 0.0, 1.0, 1.0) // Blue for selected
@@ -352,20 +336,20 @@ pub fn draw_shapes(
 
         // Draw the appropriate shape based on its type
         if let Some(point) = point_opt {
-            let pos = point.point.pos();
+            let pos = point.data.pos();
             gizmos.circle_2d(qvec_to_vec2(pos), 0.2, color);
         }
 
         if let Some(line) = line_opt {
             // Draw actual line from the QLine data
-            let start = line.line.start().pos();
-            let end = line.line.end().pos();
+            let start = line.data.start().pos();
+            let end = line.data.end().pos();
             gizmos.line_2d(qvec_to_vec2(start), qvec_to_vec2(end), color);
         }
 
         if let Some(bbox) = bbox_opt {
-            let min = bbox.bbox.left_bottom().pos();
-            let max = bbox.bbox.right_top().pos();
+            let min = bbox.data.left_bottom().pos();
+            let max = bbox.data.right_top().pos();
             let center = Vec2::new(
                 (min.x.to_num::<f32>() + max.x.to_num::<f32>()) / 2.0,
                 (min.y.to_num::<f32>() + max.y.to_num::<f32>()) / 2.0,
@@ -381,7 +365,7 @@ pub fn draw_shapes(
             // let center = circle.circle.center().pos();
             // let radius = circle.circle.radius().to_num::<f32>();
             // gizmos.circle_2d(qvec_to_vec2(center), radius, color);
-            let points = circle.circle.points();
+            let points = circle.data.points();
             if points.len() > 1 {
                 // Draw edges between consecutive points
                 for i in 0..points.len() {
@@ -395,7 +379,7 @@ pub fn draw_shapes(
 
         // Draw polygon edges
         if let Some(polygon) = polygon_opt {
-            let points = polygon.polygon.points();
+            let points = polygon.data.points();
             if points.len() > 1 {
                 // Draw edges between consecutive points
                 for i in 0..points.len() {

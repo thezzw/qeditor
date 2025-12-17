@@ -5,17 +5,18 @@
 
 use bevy::prelude::*;
 use qgeometry::shape::{QBbox, QCircle, QLine, QPoint, QPolygon, QShapeType};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Deserialize, Serialize)]
 pub enum ShapeLayer {
     #[default]
     MainScene,
     AuxiliaryLine,
+    Generated
 }
 
-/// Component representing a shape entity
-#[derive(Component, Debug, Clone)]
-pub struct Shape {
+#[derive(Component, Debug, Clone, Deserialize, Serialize)]
+pub struct EditorShape {
     /// The layer of the shape
     pub layer: ShapeLayer,
     /// The type of the shape
@@ -25,36 +26,36 @@ pub struct Shape {
 }
 
 /// Component for storing a point shape
-#[derive(Component, Debug, Clone)]
-pub struct PointShape {
+#[derive(Component, Debug, Clone, Deserialize, Serialize)]
+pub struct QPointData {
     /// The point data
-    pub point: QPoint,
+    pub data: QPoint,
 }
 
 /// Component for storing a line shape
-#[derive(Component, Debug, Clone)]
-pub struct LineShape {
+#[derive(Component, Debug, Clone, Deserialize, Serialize)]
+pub struct QLineData {
     /// The line data
-    pub line: QLine,
+    pub data: QLine,
 }
 
 /// Component for storing a bounding box shape
-#[derive(Component, Debug, Clone)]
-pub struct BboxShape {
+#[derive(Component, Debug, Clone, Deserialize, Serialize)]
+pub struct QBboxData {
     /// The bounding box data
-    pub bbox: QBbox,
+    pub data: QBbox,
 }
 
 /// Component for storing a circle shape
-#[derive(Component, Debug, Clone)]
-pub struct CircleShape {
+#[derive(Component, Debug, Clone, Deserialize, Serialize)]
+pub struct QCircleData {
     /// The circle data
-    pub circle: QCircle,
+    pub data: QCircle,
 }
 
 /// Component for storing a polygon shape
-#[derive(Component, Debug, Clone)]
-pub struct PolygonShape {
+#[derive(Component, Debug, Clone, Deserialize, Serialize)]
+pub struct QPolygonData {
     /// The polygon data
-    pub polygon: QPolygon,
+    pub data: QPolygon,
 }

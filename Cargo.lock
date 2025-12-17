@@ -2404,6 +2404,7 @@ dependencies = [
  "az",
  "bytemuck",
  "half",
+ "serde",
  "typenum",
 ]
 
@@ -4054,6 +4055,7 @@ name = "qgeometry"
 version = "0.1.0"
 dependencies = [
  "qmath",
+ "serde",
 ]
 
 [[package]]
@@ -4061,6 +4063,7 @@ name = "qmath"
 version = "0.1.0"
 dependencies = [
  "fixed",
+ "serde",
 ]
 
 [[package]]

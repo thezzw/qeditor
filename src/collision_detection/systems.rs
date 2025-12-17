@@ -2,12 +2,8 @@
 //!
 //! This module defines the systems used for collision detection and visualization.
 
-use super::components::{
-    CollisionVisualization, MinkowskiDifferenceVisualization, SeparationVectorVisualization,
-};
-use crate::shapes::components::{
-    BboxShape, CircleShape, LineShape, PointShape, PolygonShape, Shape, ShapeLayer,
-};
+use super::components::{CollisionVisualization, MinkowskiDifferenceVisualization, SeparationVectorVisualization};
+use crate::shapes::components::{EditorShape, QBboxData, QCircleData, QLineData, QPointData, QPolygonData, ShapeLayer};
 use bevy::prelude::*;
 use qgeometry::algorithm::get_minkowski_difference;
 use qgeometry::shape::{QLine, QPoint, QShapeCommon};
@@ -18,12 +14,12 @@ pub fn detect_collisions(
     // Query all shapes with their components
     shapes: Query<(
         Entity,
-        &Shape,
-        Option<&PointShape>,
-        Option<&LineShape>,
-        Option<&BboxShape>,
-        Option<&CircleShape>,
-        Option<&PolygonShape>,
+        &EditorShape,
+        Option<&QPointData>,
+        Option<&QLineData>,
+        Option<&QBboxData>,
+        Option<&QCircleData>,
+        Option<&QPolygonData>,
     )>,
     // Query existing collision visualizations to clean them up
     mut visualization_query: Query<Entity, With<CollisionVisualization>>,
@@ -52,80 +48,78 @@ pub fn detect_collisions(
             let (_, shape_b, point_b, line_b, bbox_b, circle_b, polygon_b) = shape_entities[j];
 
             // Skip if either shape is on auxiliary layer (to avoid checking visualization shapes)
-            if shape_a.layer == ShapeLayer::AuxiliaryLine
-                || shape_b.layer == ShapeLayer::AuxiliaryLine
-            {
+            if shape_a.layer == ShapeLayer::Generated || shape_b.layer == ShapeLayer::Generated {
                 continue;
             }
 
             // Check if shapes collide
             let collision_detected = if let (Some(point), _) = (point_a, point_b) {
                 if let Some(other_point) = point_b {
-                    point.point.is_collide(&other_point.point)
+                    point.data.is_collide(&other_point.data)
                 } else if let Some(other_line) = line_b {
-                    point.point.is_collide(&other_line.line)
+                    point.data.is_collide(&other_line.data)
                 } else if let Some(other_bbox) = bbox_b {
-                    point.point.is_collide(&other_bbox.bbox)
+                    point.data.is_collide(&other_bbox.data)
                 } else if let Some(other_circle) = circle_b {
-                    point.point.is_collide(&other_circle.circle)
+                    point.data.is_collide(&other_circle.data)
                 } else if let Some(other_polygon) = polygon_b {
-                    point.point.is_collide(&other_polygon.polygon)
+                    point.data.is_collide(&other_polygon.data)
                 } else {
                     false
                 }
             } else if let (Some(line), _) = (line_a, line_b) {
                 if let Some(other_point) = point_b {
-                    line.line.is_collide(&other_point.point)
+                    line.data.is_collide(&other_point.data)
                 } else if let Some(other_line) = line_b {
-                    line.line.is_collide(&other_line.line)
+                    line.data.is_collide(&other_line.data)
                 } else if let Some(other_bbox) = bbox_b {
-                    line.line.is_collide(&other_bbox.bbox)
+                    line.data.is_collide(&other_bbox.data)
                 } else if let Some(other_circle) = circle_b {
-                    line.line.is_collide(&other_circle.circle)
+                    line.data.is_collide(&other_circle.data)
                 } else if let Some(other_polygon) = polygon_b {
-                    line.line.is_collide(&other_polygon.polygon)
+                    line.data.is_collide(&other_polygon.data)
                 } else {
                     false
                 }
             } else if let (Some(bbox), _) = (bbox_a, bbox_b) {
                 if let Some(other_point) = point_b {
-                    bbox.bbox.is_collide(&other_point.point)
+                    bbox.data.is_collide(&other_point.data)
                 } else if let Some(other_line) = line_b {
-                    bbox.bbox.is_collide(&other_line.line)
+                    bbox.data.is_collide(&other_line.data)
                 } else if let Some(other_bbox) = bbox_b {
-                    bbox.bbox.is_collide(&other_bbox.bbox)
+                    bbox.data.is_collide(&other_bbox.data)
                 } else if let Some(other_circle) = circle_b {
-                    bbox.bbox.is_collide(&other_circle.circle)
+                    bbox.data.is_collide(&other_circle.data)
                 } else if let Some(other_polygon) = polygon_b {
-                    bbox.bbox.is_collide(&other_polygon.polygon)
+                    bbox.data.is_collide(&other_polygon.data)
                 } else {
                     false
                 }
             } else if let (Some(circle), _) = (circle_a, circle_b) {
                 if let Some(other_point) = point_b {
-                    circle.circle.is_collide(&other_point.point)
+                    circle.data.is_collide(&other_point.data)
                 } else if let Some(other_line) = line_b {
-                    circle.circle.is_collide(&other_line.line)
+                    circle.data.is_collide(&other_line.data)
                 } else if let Some(other_bbox) = bbox_b {
-                    circle.circle.is_collide(&other_bbox.bbox)
+                    circle.data.is_collide(&other_bbox.data)
                 } else if let Some(other_circle) = circle_b {
-                    circle.circle.is_collide(&other_circle.circle)
+                    circle.data.is_collide(&other_circle.data)
                 } else if let Some(other_polygon) = polygon_b {
-                    circle.circle.is_collide(&other_polygon.polygon)
+                    circle.data.is_collide(&other_polygon.data)
                 } else {
                     false
                 }
             } else if let (Some(polygon), _) = (polygon_a, polygon_b) {
                 if let Some(other_point) = point_b {
-                    polygon.polygon.is_collide(&other_point.point)
+                    polygon.data.is_collide(&other_point.data)
                 } else if let Some(other_line) = line_b {
-                    polygon.polygon.is_collide(&other_line.line)
+                    polygon.data.is_collide(&other_line.data)
                 } else if let Some(other_bbox) = bbox_b {
-                    polygon.polygon.is_collide(&other_bbox.bbox)
+                    polygon.data.is_collide(&other_bbox.data)
                 } else if let Some(other_circle) = circle_b {
-                    polygon.polygon.is_collide(&other_circle.circle)
+                    polygon.data.is_collide(&other_circle.data)
                 } else if let Some(other_polygon) = polygon_b {
-                    polygon.polygon.is_collide(&other_polygon.polygon)
+                    polygon.data.is_collide(&other_polygon.data)
                 } else {
                     false
                 }
@@ -138,83 +132,71 @@ pub fn detect_collisions(
                 // Calculate separation vector
                 let separation_vector = if let (Some(point), _) = (point_a, point_b) {
                     if let Some(other_point) = point_b {
-                        point.point.try_get_seperation_vector(&other_point.point)
+                        point.data.try_get_seperation_vector(&other_point.data)
                     } else if let Some(other_line) = line_b {
-                        point.point.try_get_seperation_vector(&other_line.line)
+                        point.data.try_get_seperation_vector(&other_line.data)
                     } else if let Some(other_bbox) = bbox_b {
-                        point.point.try_get_seperation_vector(&other_bbox.bbox)
+                        point.data.try_get_seperation_vector(&other_bbox.data)
                     } else if let Some(other_circle) = circle_b {
-                        point.point.try_get_seperation_vector(&other_circle.circle)
+                        point.data.try_get_seperation_vector(&other_circle.data)
                     } else if let Some(other_polygon) = polygon_b {
-                        point
-                            .point
-                            .try_get_seperation_vector(&other_polygon.polygon)
+                        point.data.try_get_seperation_vector(&other_polygon.data)
                     } else {
                         None
                     }
                 } else if let (Some(line), _) = (line_a, line_b) {
                     if let Some(other_point) = point_b {
-                        line.line.try_get_seperation_vector(&other_point.point)
+                        line.data.try_get_seperation_vector(&other_point.data)
                     } else if let Some(other_line) = line_b {
-                        line.line.try_get_seperation_vector(&other_line.line)
+                        line.data.try_get_seperation_vector(&other_line.data)
                     } else if let Some(other_bbox) = bbox_b {
-                        line.line.try_get_seperation_vector(&other_bbox.bbox)
+                        line.data.try_get_seperation_vector(&other_bbox.data)
                     } else if let Some(other_circle) = circle_b {
-                        line.line.try_get_seperation_vector(&other_circle.circle)
+                        line.data.try_get_seperation_vector(&other_circle.data)
                     } else if let Some(other_polygon) = polygon_b {
-                        line.line.try_get_seperation_vector(&other_polygon.polygon)
+                        line.data.try_get_seperation_vector(&other_polygon.data)
                     } else {
                         None
                     }
                 } else if let (Some(bbox), _) = (bbox_a, bbox_b) {
                     if let Some(other_point) = point_b {
-                        bbox.bbox.try_get_seperation_vector(&other_point.point)
+                        bbox.data.try_get_seperation_vector(&other_point.data)
                     } else if let Some(other_line) = line_b {
-                        bbox.bbox.try_get_seperation_vector(&other_line.line)
+                        bbox.data.try_get_seperation_vector(&other_line.data)
                     } else if let Some(other_bbox) = bbox_b {
-                        bbox.bbox.try_get_seperation_vector(&other_bbox.bbox)
+                        bbox.data.try_get_seperation_vector(&other_bbox.data)
                     } else if let Some(other_circle) = circle_b {
-                        bbox.bbox.try_get_seperation_vector(&other_circle.circle)
+                        bbox.data.try_get_seperation_vector(&other_circle.data)
                     } else if let Some(other_polygon) = polygon_b {
-                        bbox.bbox.try_get_seperation_vector(&other_polygon.polygon)
+                        bbox.data.try_get_seperation_vector(&other_polygon.data)
                     } else {
                         None
                     }
                 } else if let (Some(circle), _) = (circle_a, circle_b) {
                     if let Some(other_point) = point_b {
-                        circle.circle.try_get_seperation_vector(&other_point.point)
+                        circle.data.try_get_seperation_vector(&other_point.data)
                     } else if let Some(other_line) = line_b {
-                        circle.circle.try_get_seperation_vector(&other_line.line)
+                        circle.data.try_get_seperation_vector(&other_line.data)
                     } else if let Some(other_bbox) = bbox_b {
-                        circle.circle.try_get_seperation_vector(&other_bbox.bbox)
+                        circle.data.try_get_seperation_vector(&other_bbox.data)
                     } else if let Some(other_circle) = circle_b {
-                        circle
-                            .circle
-                            .try_get_seperation_vector(&other_circle.circle)
+                        circle.data.try_get_seperation_vector(&other_circle.data)
                     } else if let Some(other_polygon) = polygon_b {
-                        circle
-                            .circle
-                            .try_get_seperation_vector(&other_polygon.polygon)
+                        circle.data.try_get_seperation_vector(&other_polygon.data)
                     } else {
                         None
                     }
                 } else if let (Some(polygon), _) = (polygon_a, polygon_b) {
                     if let Some(other_point) = point_b {
-                        polygon
-                            .polygon
-                            .try_get_seperation_vector(&other_point.point)
+                        polygon.data.try_get_seperation_vector(&other_point.data)
                     } else if let Some(other_line) = line_b {
-                        polygon.polygon.try_get_seperation_vector(&other_line.line)
+                        polygon.data.try_get_seperation_vector(&other_line.data)
                     } else if let Some(other_bbox) = bbox_b {
-                        polygon.polygon.try_get_seperation_vector(&other_bbox.bbox)
+                        polygon.data.try_get_seperation_vector(&other_bbox.data)
                     } else if let Some(other_circle) = circle_b {
-                        polygon
-                            .polygon
-                            .try_get_seperation_vector(&other_circle.circle)
+                        polygon.data.try_get_seperation_vector(&other_circle.data)
                     } else if let Some(other_polygon) = polygon_b {
-                        polygon
-                            .polygon
-                            .try_get_seperation_vector(&other_polygon.polygon)
+                        polygon.data.try_get_seperation_vector(&other_polygon.data)
                     } else {
                         None
                     }
@@ -224,66 +206,66 @@ pub fn detect_collisions(
 
                 // Visualize bbox for first shape
                 if let (Some(point), _) = (point_a, point_b) {
-                    let bbox = point.point.get_bbox();
+                    let data = point.data.get_bbox();
                     commands.spawn((
-                        Shape {
-                            layer: ShapeLayer::AuxiliaryLine,
-                            shape_type: bbox.get_shape_type(),
+                        EditorShape {
+                            layer: ShapeLayer::Generated,
+                            shape_type: data.get_shape_type(),
                             selected: false,
                         },
-                        BboxShape { bbox },
+                        QBboxData { data },
                         CollisionVisualization,
                         Transform::default(),
                         Visibility::default(),
                     ));
                 } else if let (Some(line), _) = (line_a, line_b) {
-                    let bbox = line.line.get_bbox();
+                    let data = line.data.get_bbox();
                     commands.spawn((
-                        Shape {
-                            layer: ShapeLayer::AuxiliaryLine,
-                            shape_type: bbox.get_shape_type(),
+                        EditorShape {
+                            layer: ShapeLayer::Generated,
+                            shape_type: data.get_shape_type(),
                             selected: false,
                         },
-                        BboxShape { bbox },
+                        QBboxData { data },
                         CollisionVisualization,
                         Transform::default(),
                         Visibility::default(),
                     ));
                 } else if let (Some(bbox), _) = (bbox_a, bbox_b) {
-                    let bbox_val = bbox.bbox.get_bbox(); // Already a bbox, but call get_bbox for consistency
+                    let data = bbox.data.get_bbox(); // Already a bbox, but call get_bbox for consistency
                     commands.spawn((
-                        Shape {
-                            layer: ShapeLayer::AuxiliaryLine,
-                            shape_type: bbox_val.get_shape_type(),
+                        EditorShape {
+                            layer: ShapeLayer::Generated,
+                            shape_type: data.get_shape_type(),
                             selected: false,
                         },
-                        BboxShape { bbox: bbox_val },
+                        QBboxData { data },
                         CollisionVisualization,
                         Transform::default(),
                         Visibility::default(),
                     ));
                 } else if let (Some(circle), _) = (circle_a, circle_b) {
-                    let bbox = circle.circle.get_bbox();
+                    let data = circle.data.get_bbox();
                     commands.spawn((
-                        Shape {
-                            layer: ShapeLayer::AuxiliaryLine,
-                            shape_type: bbox.get_shape_type(),
+                        EditorShape {
+                            layer: ShapeLayer::Generated,
+                            shape_type: data.get_shape_type(),
                             selected: false,
                         },
-                        BboxShape { bbox },
+                        QBboxData { data },
                         CollisionVisualization,
                         Transform::default(),
                         Visibility::default(),
                     ));
                 } else if let (Some(polygon), _) = (polygon_a, polygon_b) {
-                    let bbox = polygon.polygon.get_bbox();
+                    let data = polygon.data.get_bbox();
                     commands.spawn((
-                        Shape {
-                            layer: ShapeLayer::AuxiliaryLine,
-                            shape_type: bbox.get_shape_type(),
+                        EditorShape {
+                            layer: ShapeLayer::Generated,
+                            shape_type: data.get_shape_type(),
                             selected: false,
                         },
-                        BboxShape { bbox },
+                        QBboxData { data },
                         CollisionVisualization,
                         Transform::default(),
                         Visibility::default(),
@@ -292,66 +274,66 @@ pub fn detect_collisions(
 
                 // Visualize bbox for second shape
                 if let (_, Some(other_point)) = (point_a, point_b) {
-                    let bbox = other_point.point.get_bbox();
+                    let data = other_point.data.get_bbox();
                     commands.spawn((
-                        Shape {
-                            layer: ShapeLayer::AuxiliaryLine,
-                            shape_type: bbox.get_shape_type(),
+                        EditorShape {
+                            layer: ShapeLayer::Generated,
+                            shape_type: data.get_shape_type(),
                             selected: false,
                         },
-                        BboxShape { bbox },
+                        QBboxData { data },
                         CollisionVisualization,
                         Transform::default(),
                         Visibility::default(),
                     ));
                 } else if let (_, Some(other_line)) = (line_a, line_b) {
-                    let bbox = other_line.line.get_bbox();
+                    let data = other_line.data.get_bbox();
                     commands.spawn((
-                        Shape {
-                            layer: ShapeLayer::AuxiliaryLine,
-                            shape_type: bbox.get_shape_type(),
+                        EditorShape {
+                            layer: ShapeLayer::Generated,
+                            shape_type: data.get_shape_type(),
                             selected: false,
                         },
-                        BboxShape { bbox },
+                        QBboxData { data },
                         CollisionVisualization,
                         Transform::default(),
                         Visibility::default(),
                     ));
                 } else if let (_, Some(other_bbox)) = (bbox_a, bbox_b) {
-                    let bbox_val = other_bbox.bbox.get_bbox(); // Already a bbox, but call get_bbox for consistency
+                    let data = other_bbox.data.get_bbox(); // Already a bbox, but call get_bbox for consistency
                     commands.spawn((
-                        Shape {
-                            layer: ShapeLayer::AuxiliaryLine,
-                            shape_type: bbox_val.get_shape_type(),
+                        EditorShape {
+                            layer: ShapeLayer::Generated,
+                            shape_type: data.get_shape_type(),
                             selected: false,
                         },
-                        BboxShape { bbox: bbox_val },
+                        QBboxData { data },
                         CollisionVisualization,
                         Transform::default(),
                         Visibility::default(),
                     ));
                 } else if let (_, Some(other_circle)) = (circle_a, circle_b) {
-                    let bbox = other_circle.circle.get_bbox();
+                    let data = other_circle.data.get_bbox();
                     commands.spawn((
-                        Shape {
-                            layer: ShapeLayer::AuxiliaryLine,
-                            shape_type: bbox.get_shape_type(),
+                        EditorShape {
+                            layer: ShapeLayer::Generated,
+                            shape_type: data.get_shape_type(),
                             selected: false,
                         },
-                        BboxShape { bbox },
+                        QBboxData { data },
                         CollisionVisualization,
                         Transform::default(),
                         Visibility::default(),
                     ));
                 } else if let (_, Some(other_polygon)) = (polygon_a, polygon_b) {
-                    let bbox = other_polygon.polygon.get_bbox();
+                    let data = other_polygon.data.get_bbox();
                     commands.spawn((
-                        Shape {
-                            layer: ShapeLayer::AuxiliaryLine,
-                            shape_type: bbox.get_shape_type(),
+                        EditorShape {
+                            layer: ShapeLayer::Generated,
+                            shape_type: data.get_shape_type(),
                             selected: false,
                         },
-                        BboxShape { bbox },
+                        QBboxData { data },
                         CollisionVisualization,
                         Transform::default(),
                         Visibility::default(),
@@ -363,15 +345,14 @@ pub fn detect_collisions(
                     && vector != QVec2::ZERO
                 {
                     let start = get_shape_center(point_b, line_b, bbox_b, circle_b, polygon_b);
-                    let line =
-                        QLine::new_from_parts(start.pos(), start.pos().saturating_add(vector));
+                    let data = QLine::new_from_parts(start.pos(), start.pos().saturating_add(vector));
                     commands.spawn((
-                        Shape {
-                            layer: ShapeLayer::AuxiliaryLine,
-                            shape_type: line.get_shape_type(),
+                        EditorShape {
+                            layer: ShapeLayer::Generated,
+                            shape_type: data.get_shape_type(),
                             selected: false,
                         },
-                        LineShape { line },
+                        QLineData { data },
                         SeparationVectorVisualization,
                         Transform::default(),
                         Visibility::default(),
@@ -384,34 +365,31 @@ pub fn detect_collisions(
 
 // Helper function to get the center of a shape
 fn get_shape_center(
-    point: Option<&PointShape>,
-    line: Option<&LineShape>,
-    bbox: Option<&BboxShape>,
-    circle: Option<&CircleShape>,
-    polygon: Option<&PolygonShape>,
+    point: Option<&QPointData>, line: Option<&QLineData>, bbox: Option<&QBboxData>, circle: Option<&QCircleData>,
+    polygon: Option<&QPolygonData>,
 ) -> QPoint {
     if let Some(point) = point {
-        point.point.get_centroid()
+        point.data.get_centroid()
     } else if let Some(line) = line {
-        line.line.get_centroid()
+        line.data.get_centroid()
     } else if let Some(bbox) = bbox {
-        bbox.bbox.get_centroid()
+        bbox.data.get_centroid()
     } else if let Some(circle) = circle {
-        circle.circle.get_centroid()
+        circle.data.get_centroid()
     } else if let Some(polygon) = polygon {
-        polygon.polygon.get_centroid()
+        polygon.data.get_centroid()
     } else {
         QPoint::ZERO
     }
 }
 
 /// System to visualize bounding boxes of colliding shapes
-pub fn visualize_collision_bboxes(mut gizmos: Gizmos, shapes: Query<(&Shape, &BboxShape)>) {
+pub fn visualize_collision_bboxes(mut gizmos: Gizmos, shapes: Query<(&EditorShape, &QBboxData)>) {
     // Draw all bbox shapes that are on the auxiliary layer
     for (shape, bbox) in shapes.iter() {
-        if shape.layer == ShapeLayer::AuxiliaryLine {
-            let min = bbox.bbox.left_bottom().pos();
-            let max = bbox.bbox.right_top().pos();
+        if shape.layer == ShapeLayer::Generated {
+            let min = bbox.data.left_bottom().pos();
+            let max = bbox.data.right_top().pos();
             let center = Vec2::new(
                 (min.x.to_num::<f32>() + max.x.to_num::<f32>()) / 2.0,
                 (min.y.to_num::<f32>() + max.y.to_num::<f32>()) / 2.0,
@@ -427,11 +405,11 @@ pub fn visualize_collision_bboxes(mut gizmos: Gizmos, shapes: Query<(&Shape, &Bb
 }
 
 /// System to visualize separation vectors as arrows
-pub fn visualize_separation_vectors(mut gizmos: Gizmos, vectors: Query<(&Shape, &LineShape)>) {
+pub fn visualize_separation_vectors(mut gizmos: Gizmos, vectors: Query<(&EditorShape, &QLineData)>) {
     for (shape, qline) in vectors.iter() {
-        if shape.layer == ShapeLayer::AuxiliaryLine {
-            let qstart = qline.line.start();
-            let qend = qline.line.end();
+        if shape.layer == ShapeLayer::Generated {
+            let qstart = qline.data.start();
+            let qend = qline.data.end();
             let start = Vec2::new(qstart.x().to_num(), qstart.y().to_num());
             let end = Vec2::new(qend.x().to_num(), qend.y().to_num());
 
@@ -471,12 +449,12 @@ pub fn compute_minkowski_difference(
     // Query all shapes with their components
     shapes: Query<(
         Entity,
-        &Shape,
-        Option<&PointShape>,
-        Option<&LineShape>,
-        Option<&BboxShape>,
-        Option<&CircleShape>,
-        Option<&PolygonShape>,
+        &EditorShape,
+        Option<&QPointData>,
+        Option<&QLineData>,
+        Option<&QBboxData>,
+        Option<&QCircleData>,
+        Option<&QPolygonData>,
     )>,
     // Query existing Minkowski difference visualizations to clean them up
     mut minkowski_query: Query<Entity, With<MinkowskiDifferenceVisualization>>,
@@ -489,7 +467,7 @@ pub fn compute_minkowski_difference(
     }
 
     // Find exactly two selected polygons
-    let mut selected_polygons: Vec<(Entity, &PolygonShape)> = Vec::new();
+    let mut selected_polygons: Vec<(Entity, &QPolygonData)> = Vec::new();
 
     for (entity, shape, _, _, _, _, polygon_opt) in shapes.iter() {
         if let Some(polygon) = polygon_opt {
@@ -508,18 +486,16 @@ pub fn compute_minkowski_difference(
     let (_, polygon_b) = selected_polygons[1];
 
     // Compute Minkowski difference
-    let minkowski_diff = get_minkowski_difference(&polygon_a.polygon, &polygon_b.polygon);
+    let minkowski_diff = get_minkowski_difference(&polygon_a.data, &polygon_b.data);
 
     // Visualize the Minkowski difference as a polygon
     commands.spawn((
-        Shape {
-            layer: ShapeLayer::AuxiliaryLine,
+        EditorShape {
+            layer: ShapeLayer::Generated,
             shape_type: minkowski_diff.get_shape_type(),
             selected: false,
         },
-        PolygonShape {
-            polygon: minkowski_diff,
-        },
+        QPolygonData { data: minkowski_diff },
         MinkowskiDifferenceVisualization,
         Transform::default(),
         Visibility::default(),
@@ -529,14 +505,14 @@ pub fn compute_minkowski_difference(
 pub fn visualize_minkowski_difference(
     mut gizmos: Gizmos,
     // Query for Minkowski difference visualizations with specific coloring
-    minkowski_shapes: Query<&PolygonShape, With<MinkowskiDifferenceVisualization>>,
+    minkowski_shapes: Query<&QPolygonData, With<MinkowskiDifferenceVisualization>>,
 ) {
     fn qvec_to_vec2(v: QVec2) -> Vec2 {
         Vec2::new(v.x.to_num::<f32>(), v.y.to_num::<f32>())
     }
     // Draw Minkowski difference visualizations with a distinct color
     for polygon_shape in minkowski_shapes.iter() {
-        let points = polygon_shape.polygon.points();
+        let points = polygon_shape.data.points();
         if points.len() > 1 {
             // Draw edges between consecutive points with a distinct color (orange)
             for i in 0..points.len() {

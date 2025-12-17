@@ -15,10 +15,10 @@ impl Plugin for CollisionDetectionPlugin {
             PostUpdate,
             (
                 detect_collisions,
-                visualize_collision_bboxes,
-                visualize_separation_vectors,
+                // visualize_collision_bboxes,
+                // visualize_separation_vectors,
                 compute_minkowski_difference,
-                visualize_minkowski_difference,
+                // visualize_minkowski_difference,
             ),
         );
     }

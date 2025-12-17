@@ -48,9 +48,7 @@ fn draw_grids(gizmos: &mut Gizmos, spacing: f32, color: Color, camera_transform:
 
 /// System to draw the coordinate axes and grid using gizmos
 pub fn draw_coordinate_system(
-    coordinate_settings: Res<CoordinateSettings>,
-    camera_query: Query<(&Camera, &GlobalTransform)>,
-    mut gizmos: Gizmos,
+    coordinate_settings: Res<CoordinateSettings>, camera_query: Query<(&Camera, &GlobalTransform)>, mut gizmos: Gizmos,
 ) {
     // Get the camera transform to determine the visible area
     let Ok((_camera, camera_transform)) = camera_query.single() else {
