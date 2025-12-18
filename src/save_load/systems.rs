@@ -107,9 +107,8 @@ fn spawn_shape_from_serialized(commands: &mut Commands, serialized: &Serializabl
 
     let mut entity_commands = commands.spawn((
         EditorShape {
-            layer: ShapeLayer::MainScene,
             shape_type,
-            selected: false,
+            ..default()
         },
         Transform::default(),
         Visibility::default(),

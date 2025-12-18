@@ -11,7 +11,7 @@ pub struct ShapesPlugin;
 impl Plugin for ShapesPlugin {
     fn build(&self, app: &mut App) {
         // Initialize the resources with Default implementations.
-        app.init_resource::<SelectedShapeType>()
+        app.init_resource::<ShapesSettings>()
             .init_resource::<ShapeDrawingState>()
             // Register interaction and rendering systems.
             .add_systems(Update, (handle_shape_interaction, draw_shapes));

@@ -211,7 +211,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
-                            selected: false,
+                            ..default()
                         },
                         QBboxData { data },
                         CollisionVisualization,
@@ -224,7 +224,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
-                            selected: false,
+                            ..default()
                         },
                         QBboxData { data },
                         CollisionVisualization,
@@ -237,7 +237,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
-                            selected: false,
+                            ..default()
                         },
                         QBboxData { data },
                         CollisionVisualization,
@@ -250,7 +250,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
-                            selected: false,
+                            ..default()
                         },
                         QBboxData { data },
                         CollisionVisualization,
@@ -263,7 +263,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
-                            selected: false,
+                            ..default()
                         },
                         QBboxData { data },
                         CollisionVisualization,
@@ -279,7 +279,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
-                            selected: false,
+                            ..default()
                         },
                         QBboxData { data },
                         CollisionVisualization,
@@ -292,7 +292,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
-                            selected: false,
+                            ..default()
                         },
                         QBboxData { data },
                         CollisionVisualization,
@@ -305,7 +305,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
-                            selected: false,
+                            ..default()
                         },
                         QBboxData { data },
                         CollisionVisualization,
@@ -318,7 +318,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
-                            selected: false,
+                            ..default()
                         },
                         QBboxData { data },
                         CollisionVisualization,
@@ -331,7 +331,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
-                            selected: false,
+                            ..default()
                         },
                         QBboxData { data },
                         CollisionVisualization,
@@ -350,7 +350,8 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
-                            selected: false,
+                            line_appearance: crate::shapes::components::LineAppearance::Arrowhead,
+                            ..default()
                         },
                         QLineData { data },
                         SeparationVectorVisualization,
@@ -381,67 +382,6 @@ fn get_shape_center(
     } else {
         QPoint::ZERO
     }
-}
-
-/// System to visualize bounding boxes of colliding shapes
-pub fn visualize_collision_bboxes(mut gizmos: Gizmos, shapes: Query<(&EditorShape, &QBboxData)>) {
-    // Draw all bbox shapes that are on the auxiliary layer
-    for (shape, bbox) in shapes.iter() {
-        if shape.layer == ShapeLayer::Generated {
-            let min = bbox.data.left_bottom().pos();
-            let max = bbox.data.right_top().pos();
-            let center = Vec2::new(
-                (min.x.to_num::<f32>() + max.x.to_num::<f32>()) / 2.0,
-                (min.y.to_num::<f32>() + max.y.to_num::<f32>()) / 2.0,
-            );
-            let size = Vec2::new(
-                (max.x.to_num::<f32>() - min.x.to_num::<f32>()).abs(),
-                (max.y.to_num::<f32>() - min.y.to_num::<f32>()).abs(),
-            );
-            // Draw with red color to indicate collision
-            gizmos.rect_2d(center, size, Color::srgba(1.0, 0.0, 0.0, 1.0));
-        }
-    }
-}
-
-/// System to visualize separation vectors as arrows
-pub fn visualize_separation_vectors(mut gizmos: Gizmos, vectors: Query<(&EditorShape, &QLineData)>) {
-    for (shape, qline) in vectors.iter() {
-        if shape.layer == ShapeLayer::Generated {
-            let qstart = qline.data.start();
-            let qend = qline.data.end();
-            let start = Vec2::new(qstart.x().to_num(), qstart.y().to_num());
-            let end = Vec2::new(qend.x().to_num(), qend.y().to_num());
-
-            // Draw arrow line
-            gizmos.line_2d(start, end, Color::srgba(0.0, 1.0, 0.0, 1.0)); // Green color
-
-            // Draw arrowhead
-            draw_arrowhead(&mut gizmos, start, end, Color::srgba(0.0, 1.0, 0.0, 1.0));
-        }
-    }
-}
-
-/// Helper function to draw an arrowhead
-fn draw_arrowhead(gizmos: &mut Gizmos, start: Vec2, end: Vec2, color: Color) {
-    let arrow_length = end.distance(start);
-    if arrow_length < 0.001 {
-        return;
-    }
-
-    let direction = (end - start).normalize();
-    let arrow_size = 0.2; // Size of the arrowhead
-
-    // Calculate perpendicular vector for arrowhead
-    let perp = Vec2::new(-direction.y, direction.x) * arrow_size * 0.5;
-
-    // Arrowhead points
-    let arrow_point1 = end - direction * arrow_size + perp;
-    let arrow_point2 = end - direction * arrow_size - perp;
-
-    // Draw arrowhead lines
-    gizmos.line_2d(end, arrow_point1, color);
-    gizmos.line_2d(end, arrow_point2, color);
 }
 
 /// System to compute and visualize Minkowski difference of two selected polygons
@@ -493,7 +433,7 @@ pub fn compute_minkowski_difference(
         EditorShape {
             layer: ShapeLayer::Generated,
             shape_type: minkowski_diff.get_shape_type(),
-            selected: false,
+            ..default()
         },
         QPolygonData { data: minkowski_diff },
         MinkowskiDifferenceVisualization,

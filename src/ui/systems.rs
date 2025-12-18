@@ -169,11 +169,9 @@ fn draw_shape_editor(
                 // Toggle selection state of the clicked shape
                 let new_selected_state = !shape.selected;
                 if let Ok(mut entity_commands) = commands.get_entity(entity) {
-                    entity_commands.insert(EditorShape {
-                        layer: shape.layer,
-                        shape_type: shape.shape_type,
-                        selected: new_selected_state, // Toggle the selection state
-                    });
+                    let mut new_edior_shape = shape.clone();
+                    new_edior_shape.selected = new_selected_state;
+                    entity_commands.insert(new_edior_shape);
                 }
             }
         }

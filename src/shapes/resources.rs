@@ -6,13 +6,6 @@ use bevy::prelude::*;
 use qgeometry::shape::QShapeType;
 use qmath::vec2::QVec2;
 
-/// Resource to track the currently selected shape type for drawing
-#[derive(Resource, Debug, Clone, Default)]
-pub struct SelectedShapeType {
-    /// The currently selected shape type
-    pub shape_type: Option<QShapeType>,
-}
-
 /// Resource to track the state of shape drawing
 #[derive(Resource, Debug, Default)]
 pub struct ShapeDrawingState {
@@ -20,4 +13,22 @@ pub struct ShapeDrawingState {
     pub start_position: Option<QVec2>,
     /// The entity of the current shape being drawn
     pub current_shape: Option<Entity>,
+    /// The currently selected shape type
+    pub selected_shape_type: Option<QShapeType>,
+}
+
+/// Resource containing coordinate system settings
+#[derive(Resource, Debug, Clone)]
+pub struct ShapesSettings {
+    pub shape_color_normal: Color,
+    pub shape_color_selected: Color,
+}
+
+impl Default for ShapesSettings {
+    fn default() -> Self {
+        Self {
+            shape_color_normal: Color::srgba(0.0, 0.0, 0.0, 1.0),
+            shape_color_selected: Color::srgba(0.0, 0.0, 1.0, 1.0),
+        }
+    }
 }

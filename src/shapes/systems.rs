@@ -6,10 +6,10 @@
 use std::cmp::Ordering;
 
 use super::{
-    components::{EditorShape, QBboxData, QCircleData, QLineData, QPointData, QPolygonData, ShapeLayer},
-    resources::{SelectedShapeType, ShapeDrawingState},
+    components::{EditorShape, QBboxData, QCircleData, QLineData, QPointData, QPolygonData},
+    resources::ShapeDrawingState,
 };
-use crate::ui::resources::UiState;
+use crate::{shapes::components::LineAppearance, ui::resources::UiState};
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
 use qgeometry::shape::{QBbox, QCircle, QLine, QPoint, QPolygon, QShapeCommon, QShapeType};
@@ -24,7 +24,6 @@ pub fn handle_shape_interaction(
     windows: Query<&Window>,
     camera_q: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
     ui_state: Res<UiState>,
-    mut selected_shape_type: ResMut<SelectedShapeType>,
     mut shape_drawing_state: ResMut<ShapeDrawingState>,
     mut egui_contexts: EguiContexts, // Add EguiContexts to check if mouse is over UI
 ) {
@@ -40,17 +39,17 @@ pub fn handle_shape_interaction(
     }
 
     // Update the selected shape type based on UI state
-    if ui_state.selected_shape.is_none() || ui_state.selected_shape != selected_shape_type.shape_type {
+    if ui_state.selected_shape.is_none() || ui_state.selected_shape != shape_drawing_state.selected_shape_type {
         // If no shape is selected in UI, reset drawing state
         shape_drawing_state.start_position = None;
         if let Some(entity) = shape_drawing_state.current_shape {
             commands.entity(entity).despawn();
             shape_drawing_state.current_shape = None;
         }
-        selected_shape_type.shape_type = ui_state.selected_shape;
+        shape_drawing_state.selected_shape_type = ui_state.selected_shape;
         return;
     } else {
-        selected_shape_type.shape_type = ui_state.selected_shape;
+        shape_drawing_state.selected_shape_type = ui_state.selected_shape;
     }
 
     // Get the primary window reference
@@ -92,7 +91,7 @@ pub fn handle_shape_interaction(
     let qworld_point = QPoint::new(qworld_pos);
 
     // Determine the selected shape type
-    let shape_type = match selected_shape_type.shape_type {
+    let shape_type = match shape_drawing_state.selected_shape_type {
         Some(t) => t,
         None => return,
     };
@@ -108,7 +107,7 @@ pub fn handle_shape_interaction(
                     if start_point == qworld_point {
                         return;
                     }
-                    match selected_shape_type.shape_type.unwrap() {
+                    match shape_drawing_state.selected_shape_type.unwrap() {
                         QShapeType::QPoint => {
                             commands.entity(entity).insert(QPointData { data: qworld_point });
                         }
@@ -146,14 +145,14 @@ pub fn handle_shape_interaction(
                     }
                 }
             } else {
-                if selected_shape_type.shape_type == Some(QShapeType::QPoint) {
+                if shape_drawing_state.selected_shape_type == Some(QShapeType::QPoint) {
                     // Start drawing a new point
                     let entity = commands
                         .spawn((
                             EditorShape {
                                 layer: ui_state.selected_layer,
                                 shape_type: QShapeType::QPoint,
-                                selected: false,
+                                ..default()
                             },
                             QPointData { data: qworld_point },
                             Transform::default(),
@@ -229,7 +228,7 @@ pub fn handle_shape_interaction(
         shape_drawing_state.start_position = Some(qworld_pos);
 
         // Create the appropriate shape based on the selected type
-        match selected_shape_type.shape_type.unwrap() {
+        match shape_drawing_state.selected_shape_type.unwrap() {
             QShapeType::QPoint => {
                 // Should not reach here since point is finalized immediately
                 assert!(false, "Point shape should be finalized immediately on click.");
@@ -242,7 +241,7 @@ pub fn handle_shape_interaction(
                         EditorShape {
                             layer: ui_state.selected_layer,
                             shape_type: QShapeType::QLine,
-                            selected: false,
+                            ..default()
                         },
                         QLineData { data: qline },
                         Transform::default(),
@@ -259,7 +258,7 @@ pub fn handle_shape_interaction(
                         EditorShape {
                             layer: ui_state.selected_layer,
                             shape_type: QShapeType::QBbox,
-                            selected: false,
+                            ..default()
                         },
                         QBboxData { data: qbbox },
                         Transform::default(),
@@ -276,7 +275,7 @@ pub fn handle_shape_interaction(
                         EditorShape {
                             layer: ui_state.selected_layer,
                             shape_type: QShapeType::QCircle,
-                            selected: false,
+                            ..default()
                         },
                         QCircleData { data: qcircle },
                         Transform::default(),
@@ -293,7 +292,7 @@ pub fn handle_shape_interaction(
                         EditorShape {
                             layer: ui_state.selected_layer,
                             shape_type: QShapeType::QPolygon,
-                            selected: false,
+                            ..default()
                         },
                         QPolygonData { data: qpolygon },
                         Transform::default(),
@@ -344,7 +343,7 @@ pub fn draw_shapes(
             // Draw actual line from the QLine data
             let start = line.data.start().pos();
             let end = line.data.end().pos();
-            gizmos.line_2d(qvec_to_vec2(start), qvec_to_vec2(end), color);
+            draw_line(&mut gizmos, qvec_to_vec2(start), qvec_to_vec2(end), color, shape.line_appearance);
         }
 
         if let Some(bbox) = bbox_opt {
@@ -372,7 +371,7 @@ pub fn draw_shapes(
                     let current = points[i].pos();
                     let next = points[(i + 1) % points.len()].pos();
 
-                    gizmos.line_2d(qvec_to_vec2(current), qvec_to_vec2(next), color);
+                    draw_line(&mut gizmos, qvec_to_vec2(current), qvec_to_vec2(next), color, shape.line_appearance);
                 }
             }
         }
@@ -386,7 +385,7 @@ pub fn draw_shapes(
                     let current = points[i].pos();
                     let next = points[(i + 1) % points.len()].pos();
 
-                    gizmos.line_2d(qvec_to_vec2(current), qvec_to_vec2(next), color);
+                    draw_line(&mut gizmos, qvec_to_vec2(current), qvec_to_vec2(next), color, shape.line_appearance);
                 }
             } else if points.len() == 1 {
                 // Draw a single point if there's only one point
@@ -395,4 +394,36 @@ pub fn draw_shapes(
             }
         }
     }
+}
+
+fn draw_line(gizmos: &mut Gizmos, start: Vec2, end: Vec2, color: Color, appearance: LineAppearance) {
+    gizmos.line_2d(start, end, color);
+    match appearance {
+        LineAppearance::Straight => {}
+        LineAppearance::Arrowhead => {
+            draw_arrowhead(gizmos, start, end, color);
+        }
+    }
+}
+
+/// Helper function to draw an arrowhead
+fn draw_arrowhead(gizmos: &mut Gizmos, start: Vec2, end: Vec2, color: Color) {
+    let arrow_length = end.distance(start);
+    if arrow_length < 0.001 {
+        return;
+    }
+
+    let direction = (end - start).normalize();
+    let arrow_size = 0.2; // Size of the arrowhead
+
+    // Calculate perpendicular vector for arrowhead
+    let perp = Vec2::new(-direction.y, direction.x) * arrow_size * 0.5;
+
+    // Arrowhead points
+    let arrow_point1 = end - direction * arrow_size + perp;
+    let arrow_point2 = end - direction * arrow_size - perp;
+
+    // Draw arrowhead lines
+    gizmos.line_2d(end, arrow_point1, color);
+    gizmos.line_2d(end, arrow_point2, color);
 }

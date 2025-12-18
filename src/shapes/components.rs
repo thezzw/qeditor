@@ -15,14 +15,34 @@ pub enum ShapeLayer {
     Generated
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Default, Deserialize, Serialize)]
+pub enum LineAppearance {
+    #[default]
+    Straight,
+    Arrowhead
+}
+
 #[derive(Component, Debug, Clone, Deserialize, Serialize)]
 pub struct EditorShape {
     /// The layer of the shape
     pub layer: ShapeLayer,
     /// The type of the shape
     pub shape_type: QShapeType,
+    /// The line appearance of the shape
+    pub line_appearance: LineAppearance,
     /// Whether the shape is selected
     pub selected: bool,
+}
+
+impl Default for EditorShape {
+    fn default() -> Self {
+        Self {
+            layer: ShapeLayer::MainScene,
+            shape_type: QShapeType::QPoint,
+            line_appearance: LineAppearance::Straight,
+            selected: false,
+        }
+    }
 }
 
 /// Component for storing a point shape
