@@ -6,5 +6,6 @@
 pub mod components;
 pub mod plugin;
 pub mod systems;
+pub mod resources;
 
 pub use plugin::CollisionDetectionPlugin;

@@ -3,6 +3,7 @@
 //! This module defines the systems used for collision detection and visualization.
 
 use super::components::{CollisionVisualization, MinkowskiDifferenceVisualization, SeparationVectorVisualization};
+use super::resources::CollisionDetectionSettings;
 use crate::shapes::components::{EditorShape, QBboxData, QCircleData, QLineData, QPointData, QPolygonData, ShapeLayer};
 use bevy::prelude::*;
 use qgeometry::algorithm::get_minkowski_difference;
@@ -21,6 +22,7 @@ pub fn detect_collisions(
         Option<&QCircleData>,
         Option<&QPolygonData>,
     )>,
+    collision_detection_settings: Res<CollisionDetectionSettings>,
     // Query existing collision visualizations to clean them up
     mut visualization_query: Query<Entity, With<CollisionVisualization>>,
     // Query existing separation vector visualizations to clean them up
@@ -211,6 +213,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
+                            color: collision_detection_settings.shape_color_bbox,
                             ..default()
                         },
                         QBboxData { data },
@@ -224,6 +227,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
+                            color: collision_detection_settings.shape_color_bbox,
                             ..default()
                         },
                         QBboxData { data },
@@ -237,6 +241,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
+                            color: collision_detection_settings.shape_color_bbox,
                             ..default()
                         },
                         QBboxData { data },
@@ -250,6 +255,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
+                            color: collision_detection_settings.shape_color_bbox,
                             ..default()
                         },
                         QBboxData { data },
@@ -263,6 +269,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
+                            color: collision_detection_settings.shape_color_bbox,
                             ..default()
                         },
                         QBboxData { data },
@@ -279,6 +286,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
+                            color: collision_detection_settings.shape_color_bbox,
                             ..default()
                         },
                         QBboxData { data },
@@ -292,6 +300,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
+                            color: collision_detection_settings.shape_color_bbox,
                             ..default()
                         },
                         QBboxData { data },
@@ -305,6 +314,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
+                            color: collision_detection_settings.shape_color_bbox,
                             ..default()
                         },
                         QBboxData { data },
@@ -318,6 +328,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
+                            color: collision_detection_settings.shape_color_bbox,
                             ..default()
                         },
                         QBboxData { data },
@@ -331,6 +342,7 @@ pub fn detect_collisions(
                         EditorShape {
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
+                            color: collision_detection_settings.shape_color_bbox,
                             ..default()
                         },
                         QBboxData { data },
@@ -351,6 +363,7 @@ pub fn detect_collisions(
                             layer: ShapeLayer::Generated,
                             shape_type: data.get_shape_type(),
                             line_appearance: crate::shapes::components::LineAppearance::Arrowhead,
+                            color: collision_detection_settings.shape_color_seperation_vector,
                             ..default()
                         },
                         QLineData { data },
@@ -446,6 +459,7 @@ pub fn visualize_minkowski_difference(
     mut gizmos: Gizmos,
     // Query for Minkowski difference visualizations with specific coloring
     minkowski_shapes: Query<&QPolygonData, With<MinkowskiDifferenceVisualization>>,
+    collision_detection_settings: Res<CollisionDetectionSettings>,
 ) {
     fn qvec_to_vec2(v: QVec2) -> Vec2 {
         Vec2::new(v.x.to_num::<f32>(), v.y.to_num::<f32>())
@@ -462,13 +476,9 @@ pub fn visualize_minkowski_difference(
                 gizmos.line_2d(
                     qvec_to_vec2(current),
                     qvec_to_vec2(next),
-                    Color::srgba(1.0, 0.5, 0.0, 1.0),
+                    collision_detection_settings.shape_color_minkowski_difference
                 );
             }
-        } else if points.len() == 1 {
-            // Draw a single point if there's only one point
-            let pos = points[0].pos();
-            gizmos.circle_2d(qvec_to_vec2(pos), 0.2, Color::srgba(1.0, 0.5, 0.0, 1.0));
         }
     }
 }

@@ -9,7 +9,7 @@ use super::{
     components::{EditorShape, QBboxData, QCircleData, QLineData, QPointData, QPolygonData},
     resources::ShapeDrawingState,
 };
-use crate::{shapes::components::LineAppearance, ui::resources::UiState};
+use crate::{shapes::{components::LineAppearance, resources::ShapesSettings}, ui::resources::UiState};
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
 use qgeometry::shape::{QBbox, QCircle, QLine, QPoint, QPolygon, QShapeCommon, QShapeType};
@@ -317,6 +317,7 @@ pub fn draw_shapes(
         Option<&QCircleData>,
         Option<&QPolygonData>,
     )>,
+    shapes_setting: Res<ShapesSettings>,
 ) {
     fn qvec_to_vec2(v: QVec2) -> Vec2 {
         Vec2::new(v.x.to_num::<f32>(), v.y.to_num::<f32>())
@@ -328,9 +329,9 @@ pub fn draw_shapes(
 
         // Set color based on selection state
         let color = if shape.selected {
-            Color::srgba(0.0, 0.0, 1.0, 1.0) // Blue for selected
+            shapes_setting.shape_color_selected
         } else {
-            Color::srgba(0.0, 0.0, 0.0, 1.0) // Black for unselected
+            shape.color
         };
 
         // Draw the appropriate shape based on its type

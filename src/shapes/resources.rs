@@ -17,17 +17,14 @@ pub struct ShapeDrawingState {
     pub selected_shape_type: Option<QShapeType>,
 }
 
-/// Resource containing coordinate system settings
 #[derive(Resource, Debug, Clone)]
 pub struct ShapesSettings {
-    pub shape_color_normal: Color,
     pub shape_color_selected: Color,
 }
 
 impl Default for ShapesSettings {
     fn default() -> Self {
         Self {
-            shape_color_normal: Color::srgba(0.0, 0.0, 0.0, 1.0),
             shape_color_selected: Color::srgba(0.0, 0.0, 1.0, 1.0),
         }
     }

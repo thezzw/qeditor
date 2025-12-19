@@ -32,6 +32,8 @@ pub struct EditorShape {
     pub line_appearance: LineAppearance,
     /// Whether the shape is selected
     pub selected: bool,
+    /// The color of the shape
+    pub color: Color
 }
 
 impl Default for EditorShape {
@@ -41,6 +43,7 @@ impl Default for EditorShape {
             shape_type: QShapeType::QPoint,
             line_appearance: LineAppearance::Straight,
             selected: false,
+            color: Color::BLACK
         }
     }
 }
