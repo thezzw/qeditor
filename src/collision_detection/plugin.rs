@@ -12,8 +12,7 @@ pub struct CollisionDetectionPlugin;
 impl Plugin for CollisionDetectionPlugin {
     fn build(&self, app: &mut App) {
         // Register collision detection and visualization systems
-        app.init_resource::<CollisionDetectionSettings>()
-            .add_systems(
+        app.init_resource::<CollisionDetectionSettings>().add_systems(
             PostUpdate,
             (
                 detect_collisions,

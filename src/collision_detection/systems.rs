@@ -476,7 +476,7 @@ pub fn visualize_minkowski_difference(
                 gizmos.line_2d(
                     qvec_to_vec2(current),
                     qvec_to_vec2(next),
-                    collision_detection_settings.shape_color_minkowski_difference
+                    collision_detection_settings.shape_color_minkowski_difference,
                 );
             }
         }

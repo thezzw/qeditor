@@ -33,7 +33,7 @@ impl Default for UiState {
             panel_visible: false,
             selected_shape: None,
             selected_layer: ShapeLayer::MainScene,
-            file_path: "assets/save/default.json".to_string(),
+            file_path: "assets/saves/default.json".to_string(),
             enable_snap: true,
             only_show_select_layer: false,
         }

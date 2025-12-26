@@ -9,7 +9,10 @@ use super::{
     components::{EditorShape, QBboxData, QCircleData, QLineData, QPointData, QPolygonData},
     resources::ShapeDrawingState,
 };
-use crate::{shapes::{components::LineAppearance, resources::ShapesSettings}, ui::resources::UiState};
+use crate::{
+    shapes::{components::LineAppearance, resources::ShapesSettings},
+    ui::resources::UiState,
+};
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
 use qgeometry::shape::{QBbox, QCircle, QLine, QPoint, QPolygon, QShapeCommon, QShapeType};
@@ -307,8 +310,7 @@ pub fn handle_shape_interaction(
 
 /// System to draw shapes using gizmos
 pub fn draw_shapes(
-    mut gizmos: Gizmos,
-    ui_state: Res<UiState>,
+    mut gizmos: Gizmos, ui_state: Res<UiState>,
     shapes: Query<(
         &EditorShape,
         Option<&QPointData>,
@@ -344,7 +346,13 @@ pub fn draw_shapes(
             // Draw actual line from the QLine data
             let start = line.data.start().pos();
             let end = line.data.end().pos();
-            draw_line(&mut gizmos, qvec_to_vec2(start), qvec_to_vec2(end), color, shape.line_appearance);
+            draw_line(
+                &mut gizmos,
+                qvec_to_vec2(start),
+                qvec_to_vec2(end),
+                color,
+                shape.line_appearance,
+            );
         }
 
         if let Some(bbox) = bbox_opt {
@@ -372,7 +380,13 @@ pub fn draw_shapes(
                     let current = points[i].pos();
                     let next = points[(i + 1) % points.len()].pos();
 
-                    draw_line(&mut gizmos, qvec_to_vec2(current), qvec_to_vec2(next), color, shape.line_appearance);
+                    draw_line(
+                        &mut gizmos,
+                        qvec_to_vec2(current),
+                        qvec_to_vec2(next),
+                        color,
+                        shape.line_appearance,
+                    );
                 }
             }
         }
@@ -386,7 +400,13 @@ pub fn draw_shapes(
                     let current = points[i].pos();
                     let next = points[(i + 1) % points.len()].pos();
 
-                    draw_line(&mut gizmos, qvec_to_vec2(current), qvec_to_vec2(next), color, shape.line_appearance);
+                    draw_line(
+                        &mut gizmos,
+                        qvec_to_vec2(current),
+                        qvec_to_vec2(next),
+                        color,
+                        shape.line_appearance,
+                    );
                 }
             } else if points.len() == 1 {
                 // Draw a single point if there's only one point

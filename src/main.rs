@@ -21,9 +21,12 @@ use collision_detection::CollisionDetectionPlugin;
 mod save_load;
 use save_load::SaveLoadPlugin;
 
+mod qphysics;
+use qphysics::QPhysicsPlugin;
+
 fn main() {
     App::new()
-        .insert_resource(ClearColor(Color::srgb(1.0, 1.0, 1.0)))
+        .insert_resource(ClearColor(Color::WHITE))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "QEditor".into(),
@@ -38,5 +41,6 @@ fn main() {
         .add_plugins(SaveLoadPlugin)
         .add_plugins(ShapesPlugin)
         .add_plugins(UiPlugin)
+        .add_plugins(QPhysicsPlugin)
         .run();
 }

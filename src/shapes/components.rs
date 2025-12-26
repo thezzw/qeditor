@@ -12,14 +12,14 @@ pub enum ShapeLayer {
     #[default]
     MainScene,
     AuxiliaryLine,
-    Generated
+    Generated,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default, Deserialize, Serialize)]
 pub enum LineAppearance {
     #[default]
     Straight,
-    Arrowhead
+    Arrowhead,
 }
 
 #[derive(Component, Debug, Clone, Deserialize, Serialize)]
@@ -33,7 +33,7 @@ pub struct EditorShape {
     /// Whether the shape is selected
     pub selected: bool,
     /// The color of the shape
-    pub color: Color
+    pub color: Color,
 }
 
 impl Default for EditorShape {
@@ -43,7 +43,7 @@ impl Default for EditorShape {
             shape_type: QShapeType::QPoint,
             line_appearance: LineAppearance::Straight,
             selected: false,
-            color: Color::BLACK
+            color: Color::BLACK,
         }
     }
 }
