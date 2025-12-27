@@ -11,6 +11,7 @@ impl Plugin for QPhysicsPlugin {
         app.init_resource::<QPhysicsConfig>()
             .init_resource::<QCollisionMatrix>()
             .init_resource::<QPhysicsDebugConfig>()
+            .init_resource::<QCollisionPairs>()
             // Add messages
             .add_message::<QCollisionEvent>()
             .add_message::<QTriggerEvent>()

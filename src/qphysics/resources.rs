@@ -21,7 +21,7 @@ impl Default for QPhysicsConfig {
     fn default() -> Self {
         Self {
             gravity: QVec2::new(Q64::ZERO, q64!(-10)), // Standard Earth gravity
-            time_step: q64!(1 / 10),                   // 60 FPS
+            time_step: q64!(1 / 10),
             velocity_iterations: 8,
             position_iterations: 3,
         }
@@ -64,3 +64,6 @@ impl Default for QPhysicsDebugConfig {
         }
     }
 }
+
+#[derive(Resource, Debug, Clone, Default)]
+pub struct QCollisionPairs(pub Vec<(Entity, Entity)>);

@@ -2,6 +2,9 @@ use bevy::prelude::*;
 use qgeometry::prelude::*;
 use qmath::{dir::QDir, prelude::*, vec2::QVec2};
 
+#[derive(Component, Debug, Clone, Hash)]
+pub struct QObjectTag(u64);
+
 /// Basic physics properties of a body
 #[derive(Component, Debug, Clone)]
 pub struct QPhysicsBody {
@@ -241,9 +244,9 @@ impl QCollisionFlag {
 #[derive(Clone, Component)]
 pub struct QTransform {
     /// Position of the entity.
-    position: QVec2,
+    pub position: QVec2,
     /// Rotation of the entity, in radians.
-    rotation: QDir,
+    pub rotation: QDir,
     /// Scale of the entity. X-Y dimension in same scale for simple calculations.
-    scale: QVec2,
+    pub scale: QVec2,
 }
