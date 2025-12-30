@@ -2,7 +2,9 @@
 
 use bevy::prelude::*;
 use qmath::{prelude::*, vec2::QVec2};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+use crate::qphysics::components::QObject;
 
 /// Physics world configuration
 #[derive(Resource, Debug, Clone)]
@@ -21,7 +23,7 @@ impl Default for QPhysicsConfig {
     fn default() -> Self {
         Self {
             gravity: QVec2::new(Q64::ZERO, q64!(-10)), // Standard Earth gravity
-            time_step: q64!(1 / 10),                   // 60 FPS
+            time_step: Q64::ONE / 10,
             velocity_iterations: 8,
             position_iterations: 3,
         }
@@ -44,6 +46,12 @@ impl Default for QCollisionMatrix {
     }
 }
 
+#[derive(Resource, Debug, Clone, Default)]
+pub struct QCollisionPairs(pub Vec<(QObject, QObject)>);
+
+#[derive(Resource, Debug, Clone, Default)]
+pub struct QCollisionPairsSetLastFrame(pub HashSet<(QObject, QObject)>);
+
 /// Debug configuration for physics visualization
 #[derive(Resource, Debug, Clone)]
 pub struct QPhysicsDebugConfig {
@@ -58,8 +66,8 @@ pub struct QPhysicsDebugConfig {
 impl Default for QPhysicsDebugConfig {
     fn default() -> Self {
         Self {
-            show_colliders: false,
-            show_velocity: false,
+            show_colliders: true,
+            show_velocity: true,
             show_contacts: false,
         }
     }

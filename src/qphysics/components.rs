@@ -1,6 +1,27 @@
 use bevy::prelude::*;
 use qgeometry::prelude::*;
 use qmath::{dir::QDir, prelude::*, vec2::QVec2};
+use std::hash::{Hash, Hasher};
+
+#[derive(Default, Component, Debug, Clone, Copy)]
+pub struct QObject {
+    pub uuid: u64,
+    pub entity: Option<Entity>,
+}
+
+impl Hash for QObject {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.uuid.hash(state);
+    }
+}
+
+impl PartialEq for QObject {
+    fn eq(&self, other: &Self) -> bool {
+        self.uuid == other.uuid
+    }
+}
+
+impl Eq for QObject {}
 
 /// Basic physics properties of a body
 #[derive(Component, Debug, Clone)]
@@ -11,18 +32,15 @@ pub struct QPhysicsBody {
     pub restitution: Q64,
     /// Coefficient of friction, range [0, 1]
     pub friction: Q64,
-    /// Whether the body is static (immovable) or dynamic
-    pub is_static: bool,
 }
 
 impl QPhysicsBody {
     /// Create a new physics body with the given properties
-    pub fn new(mass: Q64, restitution: Q64, friction: Q64, is_static: bool) -> Self {
+    pub fn new(mass: Q64, restitution: Q64, friction: Q64) -> Self {
         Self {
             mass,
             restitution,
             friction,
-            is_static,
         }
     }
 
@@ -32,7 +50,6 @@ impl QPhysicsBody {
             mass: Q64::ZERO, // 0 mass indicates infinite mass (static)
             restitution,
             friction,
-            is_static: true,
         }
     }
 
@@ -42,13 +59,12 @@ impl QPhysicsBody {
             mass,
             restitution,
             friction,
-            is_static: false,
         }
     }
 
     /// Check if the body has infinite mass (is static)
     pub fn is_static(&self) -> bool {
-        self.is_static || self.mass <= 0.0
+        self.mass <= 0.0
     }
 
     /// Get the inverse mass (1/mass) of the body, or 0 for static bodies
@@ -132,7 +148,7 @@ impl QCollisionShape {
 }
 
 /// Motion state of a body
-#[derive(Component, Debug, Clone)]
+#[derive(Default, Component, Debug, Clone)]
 pub struct QMotion {
     /// Linear velocity in units per second
     pub velocity: QVec2,
@@ -140,16 +156,6 @@ pub struct QMotion {
     pub angular_velocity: Q64,
     /// Linear acceleration in units per second squared
     pub acceleration: QVec2,
-}
-
-impl Default for QMotion {
-    fn default() -> Self {
-        Self {
-            velocity: QVec2::ZERO,
-            angular_velocity: Q64::ZERO,
-            acceleration: QVec2::ZERO,
-        }
-    }
 }
 
 impl QMotion {
@@ -238,12 +244,86 @@ impl QCollisionFlag {
 
 /// Describe the position of an 2d entity. If the entity has a parent, the position is relative
 /// to its parent position.
-#[derive(Clone, Component)]
+#[derive(Clone, Copy, Component)]
 pub struct QTransform {
     /// Position of the entity.
-    position: QVec2,
+    pub position: QVec2,
     /// Rotation of the entity, in radians.
-    rotation: QDir,
+    pub rotation: QDir,
     /// Scale of the entity. X-Y dimension in same scale for simple calculations.
-    scale: QVec2,
+    pub scale: QVec2,
+}
+
+impl Default for QTransform {
+    fn default() -> Self {
+        Self {
+            position: QVec2::ZERO,
+            rotation: QDir::default(),
+            scale: QVec2::ONE,
+        }
+    }
+}
+
+impl QTransform {
+    pub fn apply_to(&self, shape: &QCollisionShape) -> QCollisionShape {
+        match shape {
+            QCollisionShape::Point(point) => {
+                let pos = point.pos().saturating_mul(self.scale);
+                let pos = self.rotation.rotate_vec(pos).saturating_add(self.position);
+                QCollisionShape::Point(QPoint::new(pos))
+            }
+            QCollisionShape::Line(line) => {
+                let start = line.start();
+                let end = line.end();
+                let s = self
+                    .rotation
+                    .rotate_vec(start.pos().saturating_mul(self.scale))
+                    .saturating_add(self.position);
+                let e = self
+                    .rotation
+                    .rotate_vec(end.pos().saturating_mul(self.scale))
+                    .saturating_add(self.position);
+                QCollisionShape::Line(QLine::new(QPoint::new(s), QPoint::new(e)))
+            }
+            QCollisionShape::Circle(circle) => {
+                let center = circle.center();
+                let center_pos = self
+                    .rotation
+                    .rotate_vec(center.pos().saturating_mul(self.scale))
+                    .saturating_add(self.position);
+                // Use geometric mean of absolute scales to scale radius (handles non-uniform scaling)
+                let scale_mag = (self.scale.x.abs().saturating_mul(self.scale.y.abs())).saturating_sqrt();
+                let mut radius = circle.radius().saturating_mul(scale_mag);
+                if radius <= Q64::EPS {
+                    radius = Q64::EPS;
+                }
+                QCollisionShape::Circle(QCircle::new(QPoint::new(center_pos), radius))
+            }
+            QCollisionShape::Rectangle(rect) => {
+                let left_bottom = self
+                    .rotation
+                    .rotate_vec(rect.left_bottom().pos().saturating_mul(self.scale))
+                    .saturating_add(self.position);
+                let right_top = self
+                    .rotation
+                    .rotate_vec(rect.right_top().pos().saturating_mul(self.scale))
+                    .saturating_add(self.position);
+                QCollisionShape::Rectangle(QBbox::new_from_parts(left_bottom, right_top))
+            }
+            QCollisionShape::Polygon(polygon) => {
+                let new_points: Vec<QPoint> = polygon
+                    .points()
+                    .iter()
+                    .map(|p| {
+                        QPoint::new(
+                            self.rotation
+                                .rotate_vec(p.pos().saturating_mul(self.scale))
+                                .saturating_add(self.position),
+                        )
+                    })
+                    .collect();
+                QCollisionShape::Polygon(QPolygon::new(new_points))
+            }
+        }
+    }
 }

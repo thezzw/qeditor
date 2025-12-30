@@ -1,5 +1,7 @@
 //! Main application entry point
 
+mod util;
+
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 

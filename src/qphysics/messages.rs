@@ -1,19 +1,20 @@
+use super::components::QObject;
 use bevy::prelude::*;
 
 /// Trigger events for detecting when objects enter/exit trigger areas
 #[derive(Message, Debug, Clone)]
 pub enum QTriggerEvent {
     /// Fired when an object enters a trigger area
-    Enter(Entity, Entity),
+    Enter(QObject, QObject),
     /// Fired while an object stays in a trigger area
-    Stay(Entity, Entity),
+    Stay(QObject, QObject),
     /// Fired when an object exits a trigger area
-    Exit(Entity, Entity),
+    Exit(QObject, QObject),
 }
 
 impl QTriggerEvent {
     /// Get the entities involved in this trigger event
-    pub fn entities(&self) -> (Entity, Entity) {
+    pub fn entities(&self) -> (QObject, QObject) {
         match self {
             QTriggerEvent::Enter(e1, e2) => (*e1, *e2),
             QTriggerEvent::Stay(e1, e2) => (*e1, *e2),
@@ -41,16 +42,16 @@ impl QTriggerEvent {
 #[derive(Message, Debug, Clone)]
 pub enum QCollisionEvent {
     /// Fired when two objects begin colliding
-    Started(Entity, Entity),
+    Started(QObject, QObject),
     /// Fired while two objects are colliding
-    Ongoing(Entity, Entity),
+    Ongoing(QObject, QObject),
     /// Fired when two objects stop colliding
-    Ended(Entity, Entity),
+    Ended(QObject, QObject),
 }
 
 impl QCollisionEvent {
     /// Get the entities involved in this collision event
-    pub fn entities(&self) -> (Entity, Entity) {
+    pub fn entities(&self) -> (QObject, QObject) {
         match self {
             QCollisionEvent::Started(e1, e2) => (*e1, *e2),
             QCollisionEvent::Ongoing(e1, e2) => (*e1, *e2),

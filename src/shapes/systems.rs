@@ -10,10 +10,9 @@ use super::{
     resources::ShapeDrawingState,
 };
 use crate::{
-    shapes::{components::LineAppearance, resources::ShapesSettings},
-    ui::resources::UiState,
+    qphysics::{components::*, resources::QPhysicsDebugConfig}, shapes::{components::LineAppearance, resources::ShapesSettings}, ui::resources::UiState, util
 };
-use bevy::prelude::*;
+use bevy::{ecs::system::command, prelude::*};
 use bevy_egui::EguiContexts;
 use qgeometry::shape::{QBbox, QCircle, QLine, QPoint, QPolygon, QShapeCommon, QShapeType};
 use qmath::prelude::*;
@@ -112,13 +111,15 @@ pub fn handle_shape_interaction(
                     }
                     match shape_drawing_state.selected_shape_type.unwrap() {
                         QShapeType::QPoint => {
-                            commands.entity(entity).insert(QPointData { data: qworld_point });
+                            commands.entity(entity).insert(QPointData { data: qworld_point })
+                                .insert(QCollisionShape::Point(qworld_point));
                         }
                         QShapeType::QLine => {
                             // For line shapes, we need to get the current line to update it
                             // Since we can't directly access the component, we'll recreate it with the new end point
                             let new_line = QLine::new(start_point, qworld_point);
-                            commands.entity(entity).insert(QLineData { data: new_line });
+                            commands.entity(entity).insert(QLineData { data: new_line })
+                                .insert(QCollisionShape::Line(new_line));
                         }
                         QShapeType::QBbox => {
                             // Update the bounding box with the second corner
@@ -134,7 +135,8 @@ pub fn handle_shape_interaction(
                                 }
                             }
                             let new_bbox = QBbox::new_from_parts(start_point.pos(), qworld_pos);
-                            commands.entity(entity).insert(QBboxData { data: new_bbox });
+                            commands.entity(entity).insert(QBboxData { data: new_bbox })
+                                .insert(QCollisionShape::Rectangle(new_bbox));
                         }
                         QShapeType::QCircle => {
                             // Update the circle radius based on distance from center
@@ -142,7 +144,8 @@ pub fn handle_shape_interaction(
                             let dy = qworld_pos.y - start_pos.y;
                             let radius = (dx * dx + dy * dy).sqrt();
                             let new_circle = QCircle::new(start_point, Q64::from_num(radius));
-                            commands.entity(entity).insert(QCircleData { data: new_circle });
+                            commands.entity(entity).insert(QCircleData { data: new_circle })
+                                .insert(QCollisionShape::Circle(new_circle));
                         }
                         _ => {}
                     }
@@ -158,8 +161,13 @@ pub fn handle_shape_interaction(
                                 ..default()
                             },
                             QPointData { data: qworld_point },
-                            Transform::default(),
-                            Visibility::default(),
+
+                            QObject { uuid: 0, entity: None },
+                            QPhysicsBody::static_body(Q64::HALF, Q64::ZERO),
+                            QCollisionShape::Point(qworld_point),
+                            QCollisionFlag::default(),
+                            QTransform::default(),
+                            QMotion::default(),
                         ))
                         .id();
                     shape_drawing_state.current_shape = Some(entity);
@@ -180,7 +188,8 @@ pub fn handle_shape_interaction(
 
                     // Create new polygon with updated points
                     let new_polygon = QPolygon::new(points);
-                    polygon_shape.data = new_polygon;
+                    polygon_shape.data = new_polygon.clone();
+                    commands.entity(entity).insert(QCollisionShape::Polygon(new_polygon));
                 }
             }
         }
@@ -247,8 +256,13 @@ pub fn handle_shape_interaction(
                             ..default()
                         },
                         QLineData { data: qline },
-                        Transform::default(),
-                        Visibility::default(),
+
+                        QObject { uuid: 1, entity: None },
+                        QPhysicsBody::static_body(Q64::HALF, Q64::ZERO),
+                        QCollisionShape::Line(qline),
+                        QCollisionFlag::default(),
+                        QTransform::default(),
+                        QMotion::default(),
                     ))
                     .id();
                 shape_drawing_state.current_shape = Some(entity);
@@ -264,8 +278,13 @@ pub fn handle_shape_interaction(
                             ..default()
                         },
                         QBboxData { data: qbbox },
-                        Transform::default(),
-                        Visibility::default(),
+
+                        QObject { uuid: 2, entity: None },
+                        QPhysicsBody::dynamic_body(Q64::ONE, Q64::HALF, Q64::ZERO),
+                        QCollisionShape::Rectangle(qbbox),
+                        QCollisionFlag::default(),
+                        QTransform::default(),
+                        QMotion::default(),
                     ))
                     .id();
                 shape_drawing_state.current_shape = Some(entity);
@@ -281,8 +300,13 @@ pub fn handle_shape_interaction(
                             ..default()
                         },
                         QCircleData { data: qcircle },
-                        Transform::default(),
-                        Visibility::default(),
+
+                        QObject { uuid: 3, entity: None },
+                        QPhysicsBody::dynamic_body(Q64::ONE, Q64::HALF, Q64::ZERO),
+                        QCollisionShape::Circle(qcircle),
+                        QCollisionFlag::default(),
+                        QTransform::default(),
+                        QMotion::default(),
                     ))
                     .id();
                 shape_drawing_state.current_shape = Some(entity);
@@ -297,9 +321,14 @@ pub fn handle_shape_interaction(
                             shape_type: QShapeType::QPolygon,
                             ..default()
                         },
-                        QPolygonData { data: qpolygon },
-                        Transform::default(),
-                        Visibility::default(),
+                        QPolygonData { data: qpolygon.clone() },
+
+                        QObject { uuid: 4, entity: None },
+                        QPhysicsBody::dynamic_body(Q64::ONE, Q64::HALF, Q64::ZERO),
+                        QCollisionShape::Polygon(qpolygon),
+                        QCollisionFlag::default(),
+                        QTransform::default(),
+                        QMotion::default(),
                     ))
                     .id();
                 shape_drawing_state.current_shape = Some(entity);
@@ -318,13 +347,15 @@ pub fn draw_shapes(
         Option<&QBboxData>,
         Option<&QCircleData>,
         Option<&QPolygonData>,
+        &QCollisionShape,
+        &QTransform
     )>,
     shapes_setting: Res<ShapesSettings>,
 ) {
     fn qvec_to_vec2(v: QVec2) -> Vec2 {
         Vec2::new(v.x.to_num::<f32>(), v.y.to_num::<f32>())
     }
-    for (shape, point_opt, line_opt, bbox_opt, circle_opt, polygon_opt) in shapes.iter() {
+    for (shape, point_opt, line_opt, bbox_opt, circle_opt, polygon_opt, collision_shape, transform) in shapes.iter() {
         if ui_state.only_show_select_layer && shape.layer != ui_state.selected_layer {
             continue;
         }

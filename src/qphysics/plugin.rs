@@ -11,34 +11,36 @@ impl Plugin for QPhysicsPlugin {
         app.init_resource::<QPhysicsConfig>()
             .init_resource::<QCollisionMatrix>()
             .init_resource::<QPhysicsDebugConfig>()
+            .init_resource::<QCollisionPairs>()
+            .init_resource::<QCollisionPairsSetLastFrame>()
             // Add messages
             .add_message::<QCollisionEvent>()
             .add_message::<QTriggerEvent>()
             // Configure system sets
             .configure_sets(
-                Update,
+                FixedUpdate,
                 (
-                    PhysicsSystemSet::PreUpdate,
-                    PhysicsSystemSet::VelocityIntegration,
-                    PhysicsSystemSet::BroadPhase,
-                    PhysicsSystemSet::NarrowPhase,
-                    PhysicsSystemSet::CollisionResolution,
-                    PhysicsSystemSet::PositionIntegration,
-                    PhysicsSystemSet::PostUpdate,
+                    QPhysicsUpdateSet::PreUpdate,
+                    QPhysicsUpdateSet::VelocityIntegration,
+                    QPhysicsUpdateSet::BroadPhase,
+                    QPhysicsUpdateSet::NarrowPhase,
+                    QPhysicsUpdateSet::CollisionResolution,
+                    QPhysicsUpdateSet::PositionIntegration,
+                    QPhysicsUpdateSet::PostUpdate,
                 )
                     .chain(),
             )
             // Add systems
             .add_systems(
-                Update,
+                FixedUpdate,
                 (
-                    apply_forces_qsystem.in_set(PhysicsSystemSet::PreUpdate),
-                    integrate_velocities_qsystem.in_set(PhysicsSystemSet::VelocityIntegration),
-                    broad_phase_qsystem.in_set(PhysicsSystemSet::BroadPhase),
-                    narrow_phase_qsystem.in_set(PhysicsSystemSet::NarrowPhase),
-                    collision_resolution_qsystem.in_set(PhysicsSystemSet::CollisionResolution),
-                    integrate_positions_qsystem.in_set(PhysicsSystemSet::PositionIntegration),
-                    debug_render_qsystem.in_set(PhysicsSystemSet::PostUpdate),
+                    (update_qobject_qsysytem, apply_forces_qsystem).in_set(QPhysicsUpdateSet::PreUpdate),
+                    integrate_velocities_qsystem.in_set(QPhysicsUpdateSet::VelocityIntegration),
+                    broad_phase_qsystem.in_set(QPhysicsUpdateSet::BroadPhase),
+                    narrow_phase_qsystem.in_set(QPhysicsUpdateSet::NarrowPhase),
+                    collision_resolution_qsystem.in_set(QPhysicsUpdateSet::CollisionResolution),
+                    integrate_positions_qsystem.in_set(QPhysicsUpdateSet::PositionIntegration),
+                    debug_render_qsystem.in_set(QPhysicsUpdateSet::PostUpdate),
                 ),
             );
     }

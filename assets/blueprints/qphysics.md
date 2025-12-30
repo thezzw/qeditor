@@ -104,7 +104,7 @@ enum TriggerEvent {
 ```rust
 // 物理更新系统组
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-enum PhysicsSystemSet {
+enum QPhysicsUpdateSet {
     PreUpdate,
     CollisionDetection,
     Resolution,
@@ -159,16 +159,16 @@ impl Plugin for Physics2DPlugin {
             .add_event::<CollisionEvent>()
             .add_event::<TriggerEvent>()
             .configure_sets((
-                PhysicsSystemSet::PreUpdate,
-                PhysicsSystemSet::CollisionDetection,
-                PhysicsSystemSet::Resolution,
-                PhysicsSystemSet::PostUpdate,
+                QPhysicsUpdateSet::PreUpdate,
+                QPhysicsUpdateSet::CollisionDetection,
+                QPhysicsUpdateSet::Resolution,
+                QPhysicsUpdateSet::PostUpdate,
             ).chain())
             .add_systems((
-                physics_update_system.in_set(PhysicsSystemSet::PreUpdate),
-                collision_detection_system.in_set(PhysicsSystemSet::CollisionDetection),
-                collision_resolution_system.in_set(PhysicsSystemSet::Resolution),
-                debug_render_system.in_set(PhysicsSystemSet::PostUpdate),
+                physics_update_system.in_set(QPhysicsUpdateSet::PreUpdate),
+                collision_detection_system.in_set(QPhysicsUpdateSet::CollisionDetection),
+                collision_resolution_system.in_set(QPhysicsUpdateSet::Resolution),
+                debug_render_system.in_set(QPhysicsUpdateSet::PostUpdate),
             ));
     }
 }
